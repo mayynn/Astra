@@ -211,6 +211,7 @@ else
     mkdir -p "$APP_DIR"
     rsync -a --exclude='.git' --exclude='node_modules' \
       --exclude='backend/data' --exclude='backend/uploads' \
+      --exclude='backend/.env' \
       "${REPO_DIR}/" "${APP_DIR}/"
   fi
 fi
@@ -285,14 +286,12 @@ npm --prefix "${APP_DIR}/frontend" install --quiet
 # =============================================================================
 header "Running database migrations"
 
-# Run all migrations in order
+# Run all migrations in order. --if-present skips gracefully if script not defined.
 for script in migrate migrate-tickets upgrade-tickets migrate-frontpage; do
-  if npm --prefix "${APP_DIR}/backend" run "$script" -- --if-present 2>/dev/null; then
-    success "${script} OK"
-  else
-    # try direct run (non-zero exit if script doesn't exist is acceptable)
-    npm --prefix "${APP_DIR}/backend" run "$script" 2>&1 || warn "${script} skipped or errored (check output above)"
-  fi
+  info "Running ${script}..."
+  npm --prefix "${APP_DIR}/backend" run --if-present "$script" \
+    && success "${script} OK" \
+    || warn "${script} reported errors — check output above"
 done
 
 # =============================================================================
@@ -324,7 +323,8 @@ module.exports = {
   apps: [
     {
       name: "astranodes-api",
-      script: "./backend/src/server.js",
+      script: "./src/server.js",
+      cwd: "APP_DIR_PLACEHOLDER/backend",
       exec_mode: "fork",
       instances: 1,
       autorestart: true,
@@ -344,6 +344,9 @@ module.exports = {
 }
 ECOSYSTEM
 
+# Replace the placeholder with the actual install directory
+sed -i "s|APP_DIR_PLACEHOLDER|${APP_DIR}|g" "${APP_DIR}/ecosystem.config.cjs"
+
 success "ecosystem.config.cjs written"
 
 # =============================================================================
@@ -353,41 +356,20 @@ header "Writing Nginx configuration"
 
 NGINX_CONF="/etc/nginx/sites-available/astranodes"
 
+# Write HTTP-only config first — SSL paths don't exist yet so we can't include them.
+# Certbot will automatically rewrite this file to add the HTTPS block and redirect.
 cat > "$NGINX_CONF" <<NGINXCONF
 # AstraNodes — Nginx config for ${DOMAIN}
-# HTTP → HTTPS redirect (Certbot will update this block)
+# NOTE: Certbot will automatically add the SSL/HTTPS block below during deployment.
 server {
     listen 80;
     listen [::]:80;
     server_name ${DOMAIN} www.${DOMAIN};
 
-    # Let's Encrypt challenge
+    # Let's Encrypt ACME challenge
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
     }
-
-    location / {
-        return 301 https://\$host\$request_uri;
-    }
-}
-
-# HTTPS — main site
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name ${DOMAIN} www.${DOMAIN};
-
-    # SSL — Certbot will fill these paths in
-    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
-    include             /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
-
-    # Security headers
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
-    add_header X-Content-Type-Options    "nosniff" always;
-    add_header X-Frame-Options           "SAMEORIGIN" always;
-    add_header Referrer-Policy           "strict-origin-when-cross-origin" always;
 
     # ── API reverse proxy ──────────────────────────────────────────────────
     location /api/ {
@@ -467,25 +449,31 @@ header "Obtaining SSL certificate via Let's Encrypt"
 systemctl start nginx
 systemctl enable nginx
 
+# Try with www first; if DNS for www isn't set up, fall back to domain-only
+CERT_OK=false
 certbot --nginx \
   --non-interactive \
   --agree-tos \
   --redirect \
   -m "$SSL_EMAIL" \
   -d "$DOMAIN" \
-  -d "www.${DOMAIN}" \
-  || warn "Certbot failed for www.${DOMAIN} — retrying without www..."
+  -d "www.${DOMAIN}" && CERT_OK=true || true
 
-if [[ $? -ne 0 ]]; then
+if [[ "$CERT_OK" != "true" ]]; then
+  warn "Certbot with www.${DOMAIN} failed (DNS not set up?). Retrying without www..."
   certbot --nginx \
     --non-interactive \
     --agree-tos \
     --redirect \
     -m "$SSL_EMAIL" \
-    -d "$DOMAIN"
+    -d "$DOMAIN" && CERT_OK=true || true
 fi
 
-success "SSL certificate obtained"
+if [[ "$CERT_OK" == "true" ]]; then
+  success "SSL certificate obtained"
+else
+  warn "Certbot failed — site will be HTTP only. Run 'certbot --nginx -d ${DOMAIN}' manually after fixing DNS."
+fi
 
 # Auto-renew cron (certbot installs one, but add a timer check)
 systemctl enable --now certbot.timer 2>/dev/null || true

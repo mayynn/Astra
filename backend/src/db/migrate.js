@@ -109,8 +109,10 @@ export default async function migrate() {
   }
 }
 
-// Self-invoke when run directly
-migrate().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+// Self-invoke only when run directly (not when imported by server.js)
+if (process.argv[1] === fileURLToPath(__filename)) {
+  migrate().catch((err) => {
+    console.error(err)
+    process.exit(1)
+  })
+}
