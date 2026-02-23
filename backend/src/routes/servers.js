@@ -153,7 +153,10 @@ router.post("/renew", requireAuth, validate(renewSchema), async (req, res, next)
     }
 
     const plan = await getPlan(server.plan_type, server.plan_id)
-    const user = await getOne("SELECT * FROM users WHERE id = ?", [req.user.id])
+    const user = await getOne(
+      "SELECT id, coins, balance, pterodactyl_user_id FROM users WHERE id = ?",
+      [req.user.id]
+    )
 
     if (!plan || !user) {
       return res.status(404).json({ error: "Missing data" })

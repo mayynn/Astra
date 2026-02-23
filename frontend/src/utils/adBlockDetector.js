@@ -11,7 +11,7 @@
  *      Tries two domains; either blocked = adblock detected.
  *
  *   2. Script-tag probe (SECONDARY)
- *      Injects a <script> pointing at pagead2.googlesyndication.com.
+ *      Injects a <script> pointing at the actual Adsterra invoke.js domain.
  *      onerror = blocked. Catches blockers that intercept script loading
  *      differently from fetch().
  *

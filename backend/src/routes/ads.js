@@ -1,6 +1,7 @@
 import { Router } from "express"
 import { adsterra } from "../services/adsterra.js"
 import { requireAuth, requireAdmin } from "../middlewares/auth.js"
+import { env } from "../config/env.js"
 
 const router = Router()
 
@@ -12,6 +13,10 @@ const router = Router()
  */
 router.get("/coins", async (req, res, next) => {
   try {
+    // Return empty ads if Adsterra is not configured
+    if (!env.ADSTERRA_API_TOKEN || !env.ADSTERRA_DOMAIN_ID) {
+      return res.json({ nativeBanner: null, banner: null })
+    }
     const placements = await adsterra.getCoinsPagePlacements()
     
     const response = {
