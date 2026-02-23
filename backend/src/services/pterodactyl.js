@@ -1,5 +1,6 @@
 import axios from "axios"
 import { env } from "../config/env.js"
+import { selectBestNode } from "../utils/selectBestNode.js"
 
 const client = axios.create({
   baseURL: `${env.PTERODACTYL_URL.replace(/\/$/, "")}/api/application`,
@@ -90,16 +91,17 @@ export const pterodactyl = {
 
   async createServer({ name, userId, limits }) {
     try {
-      // Use configured allocation if available, otherwise fetch dynamically
-      const allocationId = env.PTERODACTYL_DEFAULT_ALLOCATION 
-        ? env.PTERODACTYL_DEFAULT_ALLOCATION 
-        : await this.getAvailableAllocation(env.PTERODACTYL_DEFAULT_NODE)
-      
+      // Dynamically select the best node based on real-time resource availability.
+      // selectBestNode fetches all nodes from the panel, checks memory/disk headroom
+      // (including overallocation policy), verifies free allocations, and returns
+      // the node with the most free memory plus a ready allocation ID.
+      const { nodeId, allocationId } = await selectBestNode(limits.memory, limits.disk)
+
       console.log("[PTERODACTYL] Creating server:", {
         name,
         userId,
         limits,
-        node: env.PTERODACTYL_DEFAULT_NODE,
+        node: nodeId,
         egg: env.PTERODACTYL_DEFAULT_EGG,
         allocation: allocationId
       })
@@ -108,7 +110,7 @@ export const pterodactyl = {
         name,
         user: userId,
         egg: env.PTERODACTYL_DEFAULT_EGG,
-        node: env.PTERODACTYL_DEFAULT_NODE,
+        node: nodeId,
         allocation: {
           default: allocationId
         },

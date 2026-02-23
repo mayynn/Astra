@@ -96,18 +96,35 @@ export const api = {
     return res.json()
   },
 
-  claimCoins: async (token, adblockDetected) => {
+  claimCoins: async (token, earnToken) => {
     const res = await fetch(`${API_URL}/coins/claim`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({ adblockDetected })
+      body: JSON.stringify({ earnToken })
     })
     if (!res.ok) {
-      const error = await res.json()
-      throw new Error(error.error || "Claim failed")
+      const data = await res.json()
+      const err = new Error(data.error || "Claim failed")
+      if (data.waitSeconds) err.waitSeconds = data.waitSeconds
+      throw err
+    }
+    return res.json()
+  },
+
+  getEarnSession: async (token) => {
+    const res = await fetch(`${API_URL}/coins/session`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      }
+    })
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.error || "Failed to start earn session")
     }
     return res.json()
   },

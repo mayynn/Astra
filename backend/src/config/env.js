@@ -21,7 +21,10 @@ const envSchema = z.object({
   RATE_LIMIT_MAX: z.string().default("200"),
   PTERODACTYL_URL: z.string().min(1),
   PTERODACTYL_API_KEY: z.string().min(1),
-  PTERODACTYL_DEFAULT_NODE: z.string().min(1),
+  // PTERODACTYL_DEFAULT_NODE is no longer required — nodes are selected
+  // automatically by selectBestNode() based on real-time resource availability.
+  // You may still set it as a hint but it is no longer used.
+  PTERODACTYL_DEFAULT_NODE: z.string().optional(),
   PTERODACTYL_DEFAULT_EGG: z.string().min(1),
   PTERODACTYL_DEFAULT_ALLOCATION: z.string().optional(),
   PTERODACTYL_DEFAULT_DOCKER_IMAGE: z.string().min(1),
@@ -56,7 +59,7 @@ export const env = {
   PORT: Number(parsed.data.PORT),
   RATE_LIMIT_WINDOW: Number(parsed.data.RATE_LIMIT_WINDOW),
   RATE_LIMIT_MAX: Number(parsed.data.RATE_LIMIT_MAX),
-  PTERODACTYL_DEFAULT_NODE: Number(parsed.data.PTERODACTYL_DEFAULT_NODE),
+  PTERODACTYL_DEFAULT_NODE: parsed.data.PTERODACTYL_DEFAULT_NODE ? Number(parsed.data.PTERODACTYL_DEFAULT_NODE) : null,
   PTERODACTYL_DEFAULT_EGG: Number(parsed.data.PTERODACTYL_DEFAULT_EGG),
   PTERODACTYL_DEFAULT_ALLOCATION: parsed.data.PTERODACTYL_DEFAULT_ALLOCATION ? Number(parsed.data.PTERODACTYL_DEFAULT_ALLOCATION) : null,
   ADSTERRA_DOMAIN_ID: Number(parsed.data.ADSTERRA_DOMAIN_ID),

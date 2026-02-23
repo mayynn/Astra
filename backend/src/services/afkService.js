@@ -1,12 +1,18 @@
-import { getOne, runSync, query } from "../config/db.js"
+import { getOne, runSync } from "../config/db.js"
 
-export async function claimAfkCoins({ userId, adblockDetected }) {
-  if (adblockDetected) {
-    const err = new Error("Disable AdBlock to earn coins")
-    err.statusCode = 400
-    throw err
-  }
-
+/**
+ * Claim AFK coins for a user.
+ *
+ * Security note: adblock detection is NOT done here — it is enforced by the
+ * earn token system (earnTokenService.js). By the time this function is called,
+ * the route handler has already validated the earn token, meaning the user
+ * demonstrably waited the minimum view duration server-side.
+ *
+ * This function only handles:
+ *   - 60-second cooldown enforcement (DB-level)
+ *   - Parameterized coin increment (no SQL injection possible)
+ */
+export async function claimAfkCoins({ userId }) {
   const now = new Date()
   const settings = await getOne("SELECT coins_per_minute FROM coin_settings WHERE id = 1")
   const user = await getOne("SELECT last_claim_time FROM users WHERE id = ?", [userId])
@@ -22,10 +28,13 @@ export async function claimAfkCoins({ userId, adblockDetected }) {
     }
   }
 
+  const reward = Math.max(1, settings?.coins_per_minute ?? 1)
+
+  // Parameterized UPDATE — no string concatenation, no negative manipulation possible
   await runSync(
     "UPDATE users SET coins = coins + ?, last_claim_time = ? WHERE id = ?",
-    [settings.coins_per_minute, now.toISOString(), userId]
+    [reward, now.toISOString(), userId]
   )
 
-  return settings.coins_per_minute
+  return reward
 }

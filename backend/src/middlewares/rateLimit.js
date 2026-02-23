@@ -18,3 +18,26 @@ export const authRateLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many authentication attempts. Please try again in 15 minutes." }
 })
+
+// Coin claim limiter: max 3 attempts per 70s per user (DB enforces 60s cooldown;
+// this catches rapid retry spam and Postman abuse before DB queries run).
+// keyGenerator uses req.user.id (set by requireAuth which runs before this).
+export const coinsClaimLimiter = rateLimit({
+  windowMs: 70 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `coins_claim_${req.user?.id ?? req.ip}`,
+  message: { error: "Too many claim attempts. Wait before trying again." }
+})
+
+// Coin session limiter: max 10 session tokens per 70s per user.
+// Higher than claim limit because the frontend pre-fetches tokens.
+export const coinsSessionLimiter = rateLimit({
+  windowMs: 70 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `coins_session_${req.user?.id ?? req.ip}`,
+  message: { error: "Too many session requests. Slow down." }
+})

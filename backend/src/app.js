@@ -14,29 +14,43 @@ const __dirname = dirname(__filename)
 
 const app = express()
 
-app.set("trust proxy", true)
+// Trust exactly 1 proxy hop (nginx in production, Codespaces forwarder in dev).
+// Using `true` is rejected by express-rate-limit as it allows IP spoofing.
+app.set("trust proxy", 1)
 
 // CORS Configuration
+console.log(`[CORS INIT] NODE_ENV="${env.NODE_ENV}" FRONTEND_URL="${env.FRONTEND_URL}"`)
+
 const corsOptions = {
   origin: function (origin, callback) {
+    console.log(`[CORS] ← origin="${origin}" NODE_ENV="${env.NODE_ENV}" FRONTEND_URL="${env.FRONTEND_URL}"`)
+
     // Allow requests with no origin (mobile apps, curl, server-to-server)
-    if (!origin) return callback(null, true)
+    if (!origin) {
+      console.log("[CORS] ✓ no-origin request allowed")
+      return callback(null, true)
+    }
 
     // Always allow GitHub Codespaces origins
-    if (origin.endsWith(".app.github.dev")) return callback(null, true)
+    if (origin.endsWith(".app.github.dev")) {
+      console.log("[CORS] ✓ Codespaces origin allowed")
+      return callback(null, true)
+    }
 
     // Always allow in non-production or when FRONTEND_URL is localhost
     if (env.NODE_ENV !== "production" || env.FRONTEND_URL.includes("localhost")) {
+      console.log("[CORS] ✓ non-production / localhost allowed")
       return callback(null, true)
     }
 
     // Production: check against FRONTEND_URL (support multiple comma-separated)
     const allowedOrigins = env.FRONTEND_URL.split(",").map((u) => u.trim())
     if (allowedOrigins.includes(origin)) {
+      console.log("[CORS] ✓ matched FRONTEND_URL allowed")
       return callback(null, true)
     }
 
-    console.log(`[CORS] ✗ Blocking origin: ${origin}`)
+    console.log(`[CORS] ✗ BLOCKED — origin="${origin}" not in allowedOrigins=${JSON.stringify(allowedOrigins)}`)
     callback(new Error("CORS not allowed"))
   },
   credentials: true,

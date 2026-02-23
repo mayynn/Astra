@@ -108,15 +108,21 @@ ask UPLOAD_DIR  "Uploads directory"    "${APP_DIR}/backend/uploads"
 # ─────────────────────────────────────────────────────────────────────────────
 header "4 / 8  Pterodactyl Panel"
 
-ask     PTERO_URL         "Pterodactyl panel URL (e.g. https://panel.example.com)"
-ask     PTERO_KEY         "Pterodactyl admin API key"
-ask     PTERO_NODE        "Default node ID" "1"
-ask     PTERO_EGG         "Default egg ID"  "1"
-ask_optional PTERO_ALLOC  "Default allocation ID (leave blank = auto)"  ""
-ask     PTERO_IMAGE       "Docker image" "ghcr.io/pterodactyl/yolks:java_17"
-ask     PTERO_STARTUP     "Startup command" "java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar"
-echo -e "  ${CYAN}Minecraft env vars (JSON):${RESET}"
-ask     PTERO_ENV         "Pterodactyl ENV JSON" '{"MINECRAFT_VERSION":"1.20.1","SERVER_JARFILE":"server.jar","BUILD_NUMBER":"latest"}'
+ask     PTERO_URL    "Pterodactyl panel URL (e.g. https://panel.example.com)"
+ask     PTERO_KEY    "Pterodactyl admin API key"
+
+echo ""
+echo -e "  ${CYAN}Node selection is automatic.${RESET}"
+echo -e "  At provision time the system queries all your panel nodes,"
+echo -e "  checks real-time memory/disk availability, and picks the best one."
+echo -e "  You do NOT need to set a default node ID."
+echo ""
+
+ask     PTERO_EGG     "Default egg ID" "1"
+ask     PTERO_IMAGE   "Docker image" "ghcr.io/pterodactyl/yolks:java_17"
+ask     PTERO_STARTUP "Startup command" 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar'
+echo -e "  ${CYAN}Environment variables for the Pterodactyl egg (JSON):${RESET}"
+ask     PTERO_ENV     "Pterodactyl ENV JSON" '{"MINECRAFT_VERSION":"1.20.1","SERVER_JARFILE":"server.jar","BUILD_NUMBER":"latest"}'
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  SECTION 5 — Discord
@@ -139,16 +145,18 @@ ask_optional UPI_NAME_VAL "UPI registered name / business name"  ""
 #  SECTION 7 — Adsterra Ads
 # ─────────────────────────────────────────────────────────────────────────────
 header "7 / 8  Adsterra Monetisation"
+echo -e "  ${CYAN}Leave all blank to disable ad serving.${RESET}"
+echo ""
 
-ask_optional ADSTERRA_TOKEN           "Adsterra API token"                   ""
-ask_optional ADSTERRA_DOMAIN_ID       "Adsterra domain ID"                   ""
-ask_optional ADSTERRA_NATIVE_ID       "Native banner placement ID"           ""
-ask_optional ADSTERRA_BANNER_ID       "Banner placement ID"                  ""
-ask_optional ADSTERRA_NATIVE_KEY      "Native banner placement key"          ""
-ask_optional ADSTERRA_BANNER_KEY      "Banner placement key"                 ""
-ask_optional ADSTERRA_NATIVE_SCRIPT   "Native banner script URL"             ""
-ask_optional ADSTERRA_BANNER_SCRIPT   "Banner script URL"                    ""
-ask_optional ADSTERRA_NATIVE_CONT     "Native banner container ID"           ""
+ask_optional ADSTERRA_TOKEN         "Adsterra API token"             ""
+ask_optional ADSTERRA_DOMAIN_ID_VAL "Adsterra domain ID"             ""
+ask_optional ADSTERRA_NATIVE_ID     "Native banner placement ID"     ""
+ask_optional ADSTERRA_BANNER_ID_VAL "Banner placement ID"             ""
+ask_optional ADSTERRA_NATIVE_KEY    "Native banner placement key"    ""
+ask_optional ADSTERRA_BANNER_KEY    "Banner placement key"           ""
+ask_optional ADSTERRA_NATIVE_SCRIPT "Native banner script URL"       ""
+ask_optional ADSTERRA_BANNER_SCRIPT "Banner script URL"              ""
+ask_optional ADSTERRA_NATIVE_CONT   "Native banner container ID"     ""
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  SECTION 7 — Confirm
@@ -162,7 +170,9 @@ echo -e "  ${BOLD}Install dir:${RESET}  ${APP_DIR}"
 echo -e "  ${BOLD}API port:${RESET}     ${APP_PORT} (internal)"
 echo -e "  ${BOLD}DB path:${RESET}      ${DB_PATH}"
 echo -e "  ${BOLD}Uploads:${RESET}      ${UPLOAD_DIR}"
-echo -e "  ${BOLD}Pterodactyl:${RESET}  ${PTERO_URL}"
+echo -e "  ${BOLD}Pterodactyl:${RESET}          ${PTERO_URL}"
+echo -e "  ${BOLD}Node selection:${RESET}       automatic (selectBestNode)"
+echo -e "  ${BOLD}Egg ID:${RESET}               ${PTERO_EGG}"
 echo ""
 ask_yn CONFIRM "Proceed with deployment?" "y"
 [[ "$CONFIRM" != "yes" ]] && { warn "Aborted."; exit 0; }
@@ -224,32 +234,62 @@ mkdir -p "$(dirname "$DB_PATH")" "$UPLOAD_DIR"
 header "Writing backend/.env"
 
 BACKEND_ENV="${APP_DIR}/backend/.env"
+
+# Build optional-field lines — empty values are omitted so the env file stays clean.
+# PTERODACTYL_DEFAULT_NODE is intentionally omitted: node selection is fully automatic.
+# selectBestNode() queries the panel API at provision time for real-time availability.
+DISCORD_SUPPORT_LINE=""
+ADSTERRA_TOKEN_LINE=""
+ADSTERRA_DID_LINE=""
+ADSTERRA_NID_LINE=""
+ADSTERRA_BID_LINE=""
+
+[[ -n "$DISCORD_SUPPORT_WEBHOOK" ]]  && DISCORD_SUPPORT_LINE="DISCORD_SUPPORT_WEBHOOK_URL=${DISCORD_SUPPORT_WEBHOOK}"
+[[ -n "$ADSTERRA_TOKEN" ]]           && ADSTERRA_TOKEN_LINE="ADSTERRA_API_TOKEN=${ADSTERRA_TOKEN}"
+[[ -n "$ADSTERRA_DOMAIN_ID_VAL" ]]   && ADSTERRA_DID_LINE="ADSTERRA_DOMAIN_ID=${ADSTERRA_DOMAIN_ID_VAL}"
+[[ -n "$ADSTERRA_NATIVE_ID" ]]       && ADSTERRA_NID_LINE="ADSTERRA_NATIVE_BANNER_ID=${ADSTERRA_NATIVE_ID}"
+[[ -n "$ADSTERRA_BANNER_ID_VAL" ]]   && ADSTERRA_BID_LINE="ADSTERRA_BANNER_ID=${ADSTERRA_BANNER_ID_VAL}"
+
 cat > "$BACKEND_ENV" <<EOF
 NODE_ENV=production
 PORT=${APP_PORT}
 FRONTEND_URL=https://${DOMAIN}
+
+# Auth
 JWT_SECRET=${JWT_SECRET}
 JWT_EXPIRES_IN=${JWT_EXPIRES}
+
+# Database & storage
 DB_PATH=${DB_PATH}
 UPLOAD_DIR=${UPLOAD_DIR}
+
+# Rate limiting
 RATE_LIMIT_WINDOW=900000
 RATE_LIMIT_MAX=200
+
+# Pterodactyl
+# PTERODACTYL_DEFAULT_NODE is omitted — nodes are selected automatically
+# at provision time by selectBestNode() based on real-time resource checks.
 PTERODACTYL_URL=${PTERO_URL}
 PTERODACTYL_API_KEY=${PTERO_KEY}
-PTERODACTYL_DEFAULT_NODE=${PTERO_NODE}
 PTERODACTYL_DEFAULT_EGG=${PTERO_EGG}
-PTERODACTYL_DEFAULT_ALLOCATION=${PTERO_ALLOC}
 PTERODACTYL_DEFAULT_DOCKER_IMAGE=${PTERO_IMAGE}
 PTERODACTYL_DEFAULT_STARTUP=${PTERO_STARTUP}
 PTERODACTYL_DEFAULT_ENV=${PTERO_ENV}
+
+# Discord
 DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK}
-DISCORD_SUPPORT_WEBHOOK_URL=${DISCORD_SUPPORT_WEBHOOK}
+${DISCORD_SUPPORT_LINE}
+
+# UPI
 UPI_ID=${UPI_ID_VAL}
 UPI_NAME=${UPI_NAME_VAL}
-ADSTERRA_API_TOKEN=${ADSTERRA_TOKEN}
-ADSTERRA_DOMAIN_ID=${ADSTERRA_DOMAIN_ID}
-ADSTERRA_NATIVE_BANNER_ID=${ADSTERRA_NATIVE_ID}
-ADSTERRA_BANNER_ID=${ADSTERRA_BANNER_ID}
+
+# Adsterra
+${ADSTERRA_TOKEN_LINE}
+${ADSTERRA_DID_LINE}
+${ADSTERRA_NID_LINE}
+${ADSTERRA_BID_LINE}
 ADSTERRA_NATIVE_BANNER_KEY=${ADSTERRA_NATIVE_KEY}
 ADSTERRA_BANNER_KEY=${ADSTERRA_BANNER_KEY}
 ADSTERRA_NATIVE_BANNER_SCRIPT=${ADSTERRA_NATIVE_SCRIPT}
@@ -257,7 +297,7 @@ ADSTERRA_BANNER_SCRIPT=${ADSTERRA_BANNER_SCRIPT}
 ADSTERRA_NATIVE_CONTAINER_ID=${ADSTERRA_NATIVE_CONT}
 EOF
 chmod 600 "$BACKEND_ENV"
-success "Backend .env written (chmod 600)"
+success "backend/.env written (chmod 600)"
 
 # =============================================================================
 #  WRITE FRONTEND .env.production
@@ -286,12 +326,24 @@ npm --prefix "${APP_DIR}/frontend" install --quiet
 # =============================================================================
 header "Running database migrations"
 
-# Run all migrations in order. --if-present skips gracefully if script not defined.
-for script in migrate migrate-tickets upgrade-tickets migrate-frontpage; do
-  info "Running ${script}..."
-  npm --prefix "${APP_DIR}/backend" run --if-present "$script" \
-    && success "${script} OK" \
-    || warn "${script} reported errors — check output above"
+# Migration scripts in the order they must be applied.
+# --if-present silently skips any script not defined in package.json.
+MIGRATE_SCRIPTS=(
+  migrate
+  migrate-icons
+  migrate-duration
+  migrate-tickets
+  upgrade-tickets
+  migrate-frontpage
+)
+
+for script in "${MIGRATE_SCRIPTS[@]}"; do
+  info "Running migration: ${script}..."
+  if npm --prefix "${APP_DIR}/backend" run --if-present "$script"; then
+    success "${script} OK"
+  else
+    warn "${script} reported errors — check output above (may be safe to ignore if already applied)"
+  fi
 done
 
 # =============================================================================
@@ -496,23 +548,48 @@ pm2 startup systemd -u root --hp /root | tail -1 | bash || true
 
 success "PM2 started and saved"
 
-# Reload Nginx to pick up final Certbot changes
+# Reload Nginx to pick up Certbot's final changes
 systemctl reload nginx
+
+# =============================================================================
+#  CREATE ADMIN ACCOUNT
+# =============================================================================
+header "Admin Account"
+
+echo ""
+echo -e "  ${CYAN}An admin account is required to access the dashboard.${RESET}"
+ask_yn CREATE_ADMIN "Create the first admin account now?" "y"
+
+if [[ "$CREATE_ADMIN" == "yes" ]]; then
+  info "Running create-admin script..."
+  npm --prefix "${APP_DIR}/backend" run create-admin
+  success "Admin account created"
+else
+  echo ""
+  echo -e "  ${YELLOW}Skipped. Run this later to create an admin:${RESET}"
+  echo -e "  ${BOLD}npm --prefix ${APP_DIR}/backend run create-admin${RESET}"
+fi
 
 # =============================================================================
 #  DONE
 # =============================================================================
 echo ""
-echo -e "${BOLD}${GREEN}═══════════════════════════════════════════════════${RESET}"
+echo -e "${BOLD}${GREEN}═══════════════════════════════════════════════════════${RESET}"
 echo -e "${BOLD}${GREEN}  Deployment complete!${RESET}"
-echo -e "${BOLD}${GREEN}═══════════════════════════════════════════════════${RESET}"
+echo -e "${BOLD}${GREEN}═══════════════════════════════════════════════════════${RESET}"
 echo ""
-echo -e "  ${BOLD}Site:${RESET}         https://${DOMAIN}"
-echo -e "  ${BOLD}API health:${RESET}   https://${DOMAIN}/api/health"
-echo -e "  ${BOLD}PM2 status:${RESET}   pm2 status"
-echo -e "  ${BOLD}API logs:${RESET}     pm2 logs astranodes-api"
-echo -e "  ${BOLD}Nginx logs:${RESET}   tail -f /var/log/nginx/error.log"
+echo -e "  ${BOLD}Site:${RESET}           https://${DOMAIN}"
+echo -e "  ${BOLD}API health:${RESET}     https://${DOMAIN}/api/health"
+echo -e "  ${BOLD}PM2 status:${RESET}     pm2 status"
+echo -e "  ${BOLD}API logs:${RESET}       pm2 logs astranodes-api"
+echo -e "  ${BOLD}Nginx error:${RESET}    tail -f /var/log/nginx/error.log"
 echo ""
-echo -e "  ${CYAN}To create an admin account:${RESET}"
-echo -e "  cd ${APP_DIR} && npm --prefix backend run create-admin"
+echo -e "  ${CYAN}Node provisioning:${RESET} Fully automatic — all panel nodes"
+echo -e "  are evaluated at each server purchase for memory, disk,"
+echo -e "  and free allocations. No manual node ID is required."
+echo ""
+echo -e "  ${CYAN}Useful commands:${RESET}"
+echo -e "   pm2 restart astranodes-api           # restart API"
+echo -e "   pm2 logs astranodes-api --lines 100  # recent logs"
+echo -e "   git -C ${APP_DIR} pull && pm2 restart astranodes-api  # update"
 echo ""
