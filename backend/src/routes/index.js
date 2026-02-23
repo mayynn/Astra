@@ -12,6 +12,7 @@ import adminTicketRoutes from "./adminTickets.js"
 import frontpageRoutes from "./frontpage.js"
 import adminFrontpageRoutes from "./adminFrontpage.js"
 import settingsRoutes from "./settings.js"
+import statsRoutes from "./stats.js"
 
 const router = Router()
 
@@ -28,5 +29,6 @@ router.use("/admin/tickets", adminTicketRoutes)
 router.use("/frontpage", frontpageRoutes)
 router.use("/admin/frontpage", adminFrontpageRoutes)
 router.use("/settings", settingsRoutes)
+router.use("/stats", statsRoutes)
 
 export default router

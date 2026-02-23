@@ -483,6 +483,12 @@ export const api = {
     return res.json()
   },
 
+  getStats: async () => {
+    const res = await fetch(`${API_URL}/stats`)
+    if (!res.ok) throw new Error("Failed to fetch stats")
+    return res.json()
+  },
+
   // ─── Admin: Frontpage editor ──────────────────────────────────────────────
 
   getAdminFrontpage: async () => {

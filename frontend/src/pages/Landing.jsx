@@ -60,6 +60,7 @@ export default function Landing() {
   const [plans, setPlans] = useState([])
   const [loadingContent, setLoadingContent] = useState(true)
   const [loadingPlans, setLoadingPlans] = useState(true)
+  const [liveStats, setLiveStats] = useState(null)
   const socketRef = useRef(null)
 
   useEffect(() => {
@@ -73,6 +74,10 @@ export default function Landing() {
       .then(setPlans)
       .catch(() => {})
       .finally(() => setLoadingPlans(false))
+
+    api.getStats()
+      .then(setLiveStats)
+      .catch(() => {})
 
     // Real-time socket updates
     const socket = io(getSocketUrl(), { transports: ["websocket", "polling"] })
@@ -170,11 +175,11 @@ export default function Landing() {
               {/* Stats row */}
               <div className="grid grid-cols-2 gap-4 text-sm sm:flex sm:gap-6">
                 <div>
-                  <p className="text-3xl font-semibold text-slate-100">{stats.activeServers || "500+"}</p>
+                  <p className="text-3xl font-semibold text-slate-100">{liveStats?.activeServers ?? stats.activeServers ?? "500+"}</p>
                   <p className="text-slate-400">Active Servers</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-semibold text-slate-100">{stats.totalUsers || "1,200+"}</p>
+                  <p className="text-3xl font-semibold text-slate-100">{liveStats?.totalUsers ?? stats.totalUsers ?? "1,200+"}</p>
                   <p className="text-slate-400">Total Users</p>
                 </div>
                 <div>
@@ -199,9 +204,9 @@ export default function Landing() {
                 </div>
                 <div className="grid gap-3 text-sm text-slate-300">
                   {[
-                    ["Active servers", stats.activeServers || "6"],
-                    ["Renewals this week", "14"],
-                    ["Suspensions prevented", "3"]
+                    ["Active servers", liveStats?.activeServers ?? stats.activeServers ?? "—"],
+                    ["Total users", liveStats?.totalUsers ?? stats.totalUsers ?? "—"],
+                    ["Uptime", stats.uptime || "99.9%"]
                   ].map(([label, val]) => (
                     <div key={label} className="flex items-center justify-between rounded-xl border border-slate-800/60 bg-ink-900/70 px-4 py-3">
                       <span>{label}</span>

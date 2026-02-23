@@ -6,13 +6,13 @@ import { Server } from "socket.io"
 let io = null
 
 export function initSocket(httpServer, corsOrigin) {
-  const corsConfig = corsOrigin === true
-    ? { origin: "*" }
-    : { origin: corsOrigin, credentials: true }
+  // corsOrigin can be true (allow all), an array, or a function
+  const originValue = corsOrigin === true ? "*" : corsOrigin
 
   io = new Server(httpServer, {
     cors: {
-      ...corsConfig,
+      origin: originValue,
+      credentials: originValue !== "*",
       methods: ["GET", "POST"]
     },
     transports: ["websocket", "polling"]

@@ -16,25 +16,28 @@ const app = express()
 
 app.set("trust proxy", true)
 
-// CORS Configuration - Allow all origins in development
+// CORS Configuration
 const corsOptions = {
   origin: function (origin, callback) {
-    console.log(`[CORS] Origin received: ${origin}, NODE_ENV: ${env.NODE_ENV}`)
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin || env.NODE_ENV === "development") {
-      console.log(`[CORS] ✓ Allowing origin: ${origin}`)
-      callback(null, true)
-    } else {
-      // In production, check against FRONTEND_URL
-      const allowedOrigins = [env.FRONTEND_URL]
-      if (allowedOrigins.includes(origin)) {
-        console.log(`[CORS] ✓ Allowing origin: ${origin}`)
-        callback(null, true)
-      } else {
-        console.log(`[CORS] ✗ Blocking origin: ${origin}`)
-        callback(new Error("CORS not allowed"))
-      }
+    // Allow requests with no origin (mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true)
+
+    // Always allow GitHub Codespaces origins
+    if (origin.endsWith(".app.github.dev")) return callback(null, true)
+
+    // Always allow in non-production or when FRONTEND_URL is localhost
+    if (env.NODE_ENV !== "production" || env.FRONTEND_URL.includes("localhost")) {
+      return callback(null, true)
     }
+
+    // Production: check against FRONTEND_URL (support multiple comma-separated)
+    const allowedOrigins = env.FRONTEND_URL.split(",").map((u) => u.trim())
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true)
+    }
+
+    console.log(`[CORS] ✗ Blocking origin: ${origin}`)
+    callback(new Error("CORS not allowed"))
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -57,7 +60,8 @@ app.use(helmet({
         "'unsafe-inline'",
         "https://www.highperformanceformat.com",
         "https://pl28770653.effectivegatecpm.com",
-        "https://pl28771198.effectivegatecpm.com"
+        "https://pl28771198.effectivegatecpm.com",
+        "https://environmenttalentrabble.com"
       ],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],

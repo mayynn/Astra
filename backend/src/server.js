@@ -13,9 +13,12 @@ async function startup() {
 
     const httpServer = http.createServer(app)
 
-    const allowedOrigins = env.NODE_ENV === "production"
-      ? [env.FRONTEND_URL]
-      : true  // allow all origins in development
+    const allowedOrigins = (origin) => {
+      if (!origin) return true
+      if (origin.endsWith(".app.github.dev")) return true
+      if (env.NODE_ENV !== "production" || env.FRONTEND_URL.includes("localhost")) return true
+      return env.FRONTEND_URL.split(",").map((u) => u.trim()).includes(origin)
+    }
 
     initSocket(httpServer, allowedOrigins)
 

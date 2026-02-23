@@ -38,17 +38,17 @@ export default function Coins() {
 
     loadBalance()
 
-    // Check for adblock (simple detection)
-    const checkAdblock = async () => {
-      try {
-        await fetch("https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js")
-        setAdblockDetected(false)
-      } catch {
-        setAdblockDetected(true)
-      }
-    }
+    // Adsterra Anti-Adblock detection — inject their sync script and check load/error
+    const script = document.createElement("script")
+    script.src = "https://environmenttalentrabble.com/b0/5e/61/b05e6168914992b1afb1a4d24555f90a.js"
+    script.async = true
+    script.onload = () => setAdblockDetected(false)
+    script.onerror = () => setAdblockDetected(true)
+    document.head.appendChild(script)
 
-    checkAdblock()
+    return () => {
+      if (script.parentNode) script.parentNode.removeChild(script)
+    }
   }, [navigate])
 
   useEffect(() => {
