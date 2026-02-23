@@ -288,7 +288,7 @@ router.delete("/coupons/:id", async (req, res, next) => {
 router.get("/servers", async (req, res, next) => {
   try {
     const servers = await query(
-      "SELECT s.*, u.email AS owner_email FROM servers s JOIN users u ON u.id = s.user_id ORDER BY s.created_at DESC"
+      "SELECT s.*, u.email FROM servers s JOIN users u ON u.id = s.user_id ORDER BY s.created_at DESC"
     )
     res.json(servers)
   } catch (error) {

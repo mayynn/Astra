@@ -23,7 +23,7 @@ ask() {
   while true; do
     read -rp "$(echo -e "${YELLOW}?${RESET} ${prompt}${hint}: ")" value
     value="${value:-$default}"
-    # Trim leading/trailing whitespace (catches accidental trailing spaces in URLs)
+    # Trim leading/trailing whitespace
     value="$(echo -e "${value}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
     if [[ -n "$value" ]]; then
       printf -v "$var" '%s' "$value"
@@ -187,26 +187,20 @@ ask_yn CONFIRM "Proceed with deployment?" "y"
 # =============================================================================
 header "Installing system packages"
 
-# Wait for any background apt/dpkg process (cloud-init, unattended-upgrades, etc.)
-# that holds the lock on a freshly provisioned VPS before we try to install packages.
-# Uses `flock` (util-linux — always present on Ubuntu) instead of `fuser` which
-# requires the optional psmisc package and is not installed on many VPS images.
+# Wait for any background apt/dpkg process (cloud-init, unattended-upgrades)
+# that holds the lock on a freshly provisioned VPS.
 wait_apt() {
-  # Proactively stop common lock-holders; safe no-op if services aren't running.
-  systemctl stop unattended-upgrades apt-daily.service apt-daily-upgrade.service 2>/dev/null || true
-  sleep 2  # give them a moment to release
-
   local waited=0
-  # flock -n returns 1 immediately if the advisory lock is held by another process.
-  until flock -n /var/lib/dpkg/lock-frontend true 2>/dev/null; do
+  while fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/cache/apt/archives/lock \
+        /var/lib/dpkg/lock &>/dev/null; do
     if [[ $waited -eq 0 ]]; then
-      warn "apt lock is held (cloud-init / unattended-upgrades still running)."
+      warn "Another process holds the apt lock (cloud-init / unattended-upgrades)."
       info "Waiting up to 3 minutes for it to finish..."
     fi
     sleep 5
     waited=$((waited + 5))
     if [[ $waited -ge 180 ]]; then
-      error "apt lock held for >3 minutes. Fix with: killall apt-get dpkg; dpkg --configure -a — then re-run deploy.sh."
+      error "apt lock held for >3 minutes. Kill the blocking process and re-run deploy.sh."
     fi
   done
   [[ $waited -gt 0 ]] && success "apt lock released after ${waited}s"

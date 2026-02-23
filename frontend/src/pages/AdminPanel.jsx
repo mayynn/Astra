@@ -129,7 +129,6 @@ export default function AdminPanel() {
     try {
       const token = localStorage.getItem("token")
       await api.deleteUser(token, userId)
-
       setUsers((prev) => prev.filter((u) => u.id !== userId))
     } catch (err) {
       setError(err.message)

@@ -36,8 +36,8 @@ const envSchema = z.object({
   // UPI payment details shown on Billing page
   UPI_ID: z.string().optional().default(""),
   UPI_NAME: z.string().optional().default(""),
-  ADSTERRA_API_TOKEN: z.string().optional().default(""),
-  ADSTERRA_DOMAIN_ID: z.string().optional().default(""),
+  ADSTERRA_API_TOKEN: z.string().min(1),
+  ADSTERRA_DOMAIN_ID: z.string().min(1),
   ADSTERRA_NATIVE_BANNER_ID: z.string().optional(),
   ADSTERRA_BANNER_ID: z.string().optional(),
   ADSTERRA_NATIVE_BANNER_KEY: z.string().optional(),
@@ -62,7 +62,7 @@ export const env = {
   PTERODACTYL_DEFAULT_NODE: parsed.data.PTERODACTYL_DEFAULT_NODE ? Number(parsed.data.PTERODACTYL_DEFAULT_NODE) : null,
   PTERODACTYL_DEFAULT_EGG: Number(parsed.data.PTERODACTYL_DEFAULT_EGG),
   PTERODACTYL_DEFAULT_ALLOCATION: parsed.data.PTERODACTYL_DEFAULT_ALLOCATION ? Number(parsed.data.PTERODACTYL_DEFAULT_ALLOCATION) : null,
-  ADSTERRA_DOMAIN_ID: parsed.data.ADSTERRA_DOMAIN_ID ? Number(parsed.data.ADSTERRA_DOMAIN_ID) : null,
+  ADSTERRA_DOMAIN_ID: Number(parsed.data.ADSTERRA_DOMAIN_ID),
   ADSTERRA_NATIVE_BANNER_ID: parsed.data.ADSTERRA_NATIVE_BANNER_ID ? Number(parsed.data.ADSTERRA_NATIVE_BANNER_ID) : null,
   ADSTERRA_BANNER_ID: parsed.data.ADSTERRA_BANNER_ID ? Number(parsed.data.ADSTERRA_BANNER_ID) : null
 }
