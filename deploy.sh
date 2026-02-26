@@ -272,11 +272,11 @@ apt-get install -y -q curl git nginx certbot python3-certbot-nginx ufw build-ess
 
 # Node.js LTS via NodeSource
 if ! command -v node &>/dev/null; then
-  info "Installing Node.js LTS..."
+  info "Installing Node.js v22 LTS..."
   # Download setup script to a temp file instead of piping (curl|bash)
   # because pipefail + set -e kills the deploy if the NodeSource script
   # exits non-zero (common on Ubuntu 22.04 / 24.04).
-  curl -fsSL https://deb.nodesource.com/setup_lts.x -o /tmp/nodesource_setup.sh
+  curl -fsSL https://deb.nodesource.com/setup_22.x -o /tmp/nodesource_setup.sh
   bash /tmp/nodesource_setup.sh || warn "NodeSource setup exited non-zero (usually safe — continuing)"
   rm -f /tmp/nodesource_setup.sh
   wait_apt
