@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import SectionHeader from "../components/SectionHeader.jsx"
+import { SkeletonCard } from "../components/Skeletons.jsx"
 import { api } from "../services/api.js"
+import { useAppUI } from "../context/AppUIContext.jsx"
 
 export default function CouponRedeem() {
   const [code, setCode] = useState("")
   const [redemptions, setRedemptions] = useState([])
   const [loading, setLoading] = useState(true)
   const [redeeming, setRedeeming] = useState(false)
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
   const navigate = useNavigate()
+  const { showSuccess, showError } = useAppUI()
 
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -35,11 +36,9 @@ export default function CouponRedeem() {
 
   const handleRedeem = async (e) => {
     e.preventDefault()
-    setError("")
-    setSuccess("")
 
     if (!code.trim()) {
-      setError("Please enter a coupon code")
+      showError("Please enter a coupon code.")
       return
     }
 
@@ -48,16 +47,15 @@ export default function CouponRedeem() {
     try {
       const token = localStorage.getItem("token")
       const result = await api.redeemCoupon(token, code)
-      setSuccess(`Redeemed! +${result.reward} coins`)
+      showSuccess(`Redeemed! +${result.reward} coins`)
 
       // Refresh history
       const data = await api.getCouponHistory(token)
       setRedemptions(data || [])
 
       setCode("")
-      setTimeout(() => setSuccess(""), 4000)
     } catch (err) {
-      setError(err.message)
+      showError(err.message || "Failed to redeem coupon.")
     } finally {
       setRedeeming(false)
     }
@@ -65,8 +63,12 @@ export default function CouponRedeem() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <p className="text-slate-400">Loading...</p>
+      <div className="space-y-6">
+        <SectionHeader title="Redeem Coupon" subtitle="One code per IP. Abuse prevention is enforced automatically." />
+        <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
       </div>
     )
   }
@@ -80,16 +82,6 @@ export default function CouponRedeem() {
       <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
         <div className="glass rounded-2xl border border-slate-700/40 p-6">
           <form onSubmit={handleRedeem} className="space-y-4">
-            {error && (
-              <div className="rounded-lg bg-red-900/20 border border-red-700/30 p-3 text-sm text-red-300">
-                {error}
-              </div>
-            )}
-            {success && (
-              <div className="rounded-lg bg-aurora-900/20 border border-aurora-700/30 p-3 text-sm text-aurora-300">
-                {success}
-              </div>
-            )}
             <div>
               <label className="text-xs uppercase tracking-[0.3em] text-slate-500">Code</label>
               <input

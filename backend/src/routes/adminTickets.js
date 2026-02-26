@@ -180,6 +180,7 @@ router.delete("/:id", async (req, res, next) => {
       return res.status(404).json({ error: "Ticket not found" })
     }
 
+    await runSync("DELETE FROM ticket_messages WHERE ticket_id = ?", [req.params.id])
     await runSync("DELETE FROM tickets WHERE id = ?", [req.params.id])
 
     res.json({ message: "Ticket deleted successfully" })

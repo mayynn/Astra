@@ -2,8 +2,12 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import SectionHeader from "../components/SectionHeader.jsx"
 import PlanCard from "../components/PlanCard.jsx"
+import ConfirmModal from "../components/ConfirmModal.jsx"
+import ButtonSpinner from "../components/ButtonSpinner.jsx"
+import { SkeletonCard } from "../components/Skeletons.jsx"
+import { useAppUI } from "../context/AppUIContext.jsx"
 import { api } from "../services/api.js"
-import {
+import { MapPin,
   Package,
   Server,
   Cpu,
@@ -43,12 +47,16 @@ const iconMap = {
 export default function Plans() {
   const [coinPlans, setCoinPlans] = useState([])
   const [realPlans, setRealPlans] = useState([])
+  const [locations, setLocations] = useState([])
+  const [loadingNodes, setLoadingNodes] = useState(false)
   const [loading, setLoading] = useState(true)
   const [selectedPlan, setSelectedPlan] = useState(null)
   const [serverName, setServerName] = useState("")
+  const [selectedNode, setSelectedNode] = useState(null)  // { nodeId, name }
   const [purchasing, setPurchasing] = useState(false)
-  const [error, setError] = useState("")
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const navigate = useNavigate()
+  const { showSuccess, showError } = useAppUI()
 
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -59,53 +67,86 @@ export default function Plans() {
 
     const loadPlans = async () => {
       try {
-        const coin = await api.getCoinPlans()
-        const real = await api.getRealPlans()
+        const token = localStorage.getItem("token")
+        const [coin, real] = await Promise.all([
+          api.getCoinPlans(),
+          api.getRealPlans()
+        ])
         setCoinPlans(coin || [])
         setRealPlans(real || [])
       } catch (err) {
-        console.error(err)
+        showError(err.message || "Failed to load plans")
       } finally {
         setLoading(false)
       }
     }
 
     loadPlans()
-  }, [navigate])
+  }, [navigate, showError])
 
-  const handlePurchase = async (e) => {
-    e.preventDefault()
-    if (!selectedPlan || !serverName.trim()) {
-      setError("Please select a plan and enter a server name")
-      return
-    }
+  const handleConfirmPurchase = async () => {
+    if (!selectedPlan || !serverName.trim()) return
 
     setPurchasing(true)
-    setError("")
-
     try {
       const token = localStorage.getItem("token")
       await api.purchaseServer(
         token,
         selectedPlan.type,
         selectedPlan.id,
-        serverName
+        serverName,
+        selectedNode?.nodeId || undefined,
+        selectedNode?.name || ""
       )
-      alert("Server purchased successfully!")
+      showSuccess("Server purchased successfully! Redirecting…")
       setSelectedPlan(null)
       setServerName("")
+      setSelectedNode(null)
+      setConfirmOpen(false)
       navigate("/servers")
     } catch (err) {
-      setError(err.message)
+      showError(err.message || "Purchase failed")
     } finally {
       setPurchasing(false)
     }
   }
 
+  // Fetch live nodes from Pterodactyl when the user opens the purchase form
+  const handleSelectPlan = (plan) => {
+    setSelectedPlan(plan)
+    if (locations.length === 0) {
+      setLoadingNodes(true)
+      const token = localStorage.getItem("token")
+      api.getAvailableNodes(token)
+        .then((nodes) => {
+          setLocations(nodes || [])
+          if (nodes && nodes.length > 0) setSelectedNode(nodes[0])
+        })
+        .catch(() => {})
+        .finally(() => setLoadingNodes(false))
+    }
+  }
+
+  const handleRequestPurchase = (e) => {
+    e.preventDefault()
+    if (!selectedPlan || !serverName.trim()) {
+      showError("Please select a plan and enter a server name")
+      return
+    }
+    setConfirmOpen(true)
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <p className="text-slate-400">Loading plans...</p>
+      <div className="space-y-10">
+        <SectionHeader title="Coin Plans" subtitle="Loading plans…" />
+        <div className="grid gap-4 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} className="h-56" />)}
+        </div>
+        <SectionHeader title="Real Money Plans" subtitle="Loading plans…" />
+        <div className="grid gap-4 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} className="h-56" />)}
+        </div>
       </div>
     )
   }
@@ -122,7 +163,7 @@ export default function Plans() {
           return (
             <div
               key={plan.id}
-              onClick={() => setSelectedPlan({ ...plan, type: "coin" })}
+              onClick={() => handleSelectPlan({ ...plan, type: "coin" })}
               className={`button-3d cursor-pointer rounded-xl border p-6 transition-all ${
                 selectedPlan?.id === plan.id && selectedPlan?.type === "coin"
                   ? "border-aurora-400 bg-aurora-500/10"
@@ -140,15 +181,9 @@ export default function Plans() {
                   </div>
                 </div>
                 <div className="space-y-2 text-sm text-slate-400">
-                  <p className="flex items-center gap-2">
-                    <HardDrive size={16} /> {plan.storage} GB Storage
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <Cpu size={16} /> {plan.cpu} CPU Cores
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <Zap size={16} /> {plan.ram} GB RAM
-                  </p>
+                  <p className="flex items-center gap-2"><HardDrive size={16} /> {plan.storage} GB Storage</p>
+                  <p className="flex items-center gap-2"><Cpu size={16} /> {plan.cpu} CPU Cores</p>
+                  <p className="flex items-center gap-2"><Zap size={16} /> {plan.ram} GB RAM</p>
                 </div>
                 <div className="border-t border-slate-700/30 pt-4">
                   <p className="text-2xl font-bold text-aurora-300">{plan.coin_price}</p>
@@ -170,7 +205,7 @@ export default function Plans() {
           return (
             <div
               key={plan.id}
-              onClick={() => setSelectedPlan({ ...plan, type: "real" })}
+              onClick={() => handleSelectPlan({ ...plan, type: "real" })}
               className={`button-3d cursor-pointer rounded-xl border p-6 transition-all ${
                 selectedPlan?.id === plan.id && selectedPlan?.type === "real"
                   ? "border-ember-400 bg-ember-500/10"
@@ -188,15 +223,9 @@ export default function Plans() {
                   </div>
                 </div>
                 <div className="space-y-2 text-sm text-slate-400">
-                  <p className="flex items-center gap-2">
-                    <HardDrive size={16} /> {plan.storage} GB Storage
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <Cpu size={16} /> {plan.cpu} CPU Cores
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <Zap size={16} /> {plan.ram} GB RAM
-                  </p>
+                  <p className="flex items-center gap-2"><HardDrive size={16} /> {plan.storage} GB Storage</p>
+                  <p className="flex items-center gap-2"><Cpu size={16} /> {plan.cpu} CPU Cores</p>
+                  <p className="flex items-center gap-2"><Zap size={16} /> {plan.ram} GB RAM</p>
                 </div>
                 <div className="border-t border-slate-700/30 pt-4">
                   <p className="text-2xl font-bold text-ember-300">₹{plan.price.toFixed(2)}</p>
@@ -210,13 +239,8 @@ export default function Plans() {
 
       {selectedPlan && (
         <div className="mt-10 rounded-xl border border-neon-500/30 bg-neon-900/20 p-6">
-          <h3 className="text-lg font-semibold text-neon-200 mb-4">Confirm Purchase</h3>
-          <form onSubmit={handlePurchase} className="space-y-4">
-            {error && (
-              <div className="rounded-lg bg-red-900/20 border border-red-700/30 p-3 text-sm text-red-300">
-                {error}
-              </div>
-            )}
+          <h3 className="text-lg font-semibold text-neon-200 mb-4">Configure Server</h3>
+          <form onSubmit={handleRequestPurchase} className="space-y-4">
             <div>
               <label className="text-sm text-slate-400">Server Name</label>
               <input
@@ -224,8 +248,41 @@ export default function Plans() {
                 value={serverName}
                 onChange={(e) => setServerName(e.target.value)}
                 placeholder="e.g., Astra SMP"
-                className="mt-2 w-full rounded-lg border border-slate-700/60 bg-ink-900/70 px-4 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-neon-500/50 focus:outline-none"
+                className="input mt-2 w-full"
               />
+            </div>
+            <div>
+              <label className="text-sm text-slate-400 flex items-center gap-1.5 mb-2">
+                <MapPin className="h-3.5 w-3.5" /> Server Location
+              </label>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {loadingNodes && (
+                  <p className="text-xs text-slate-400 animate-pulse col-span-full">Fetching available locations…</p>
+                )}
+                {!loadingNodes && locations.length === 0 && (
+                  <p className="text-xs text-slate-500 col-span-full">No locations available right now.</p>
+                )}
+                {locations.map((node) => (
+                  <button
+                    key={node.nodeId}
+                    type="button"
+                    onClick={() => setSelectedNode(node)}
+                    className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm text-left transition-all ${
+                      selectedNode?.nodeId === node.nodeId
+                        ? "border-neon-500/50 bg-neon-900/30 text-neon-200"
+                        : "border-slate-700/40 bg-ink-950/40 text-slate-300 hover:border-neon-500/30 hover:bg-neon-900/10"
+                    }`}
+                  >
+                    <span className="flex-1 min-w-0">
+                      <span className="block font-medium truncate">{node.name}</span>
+                      <span className="block text-xs text-slate-500">{node.freeAllocCount} slot{node.freeAllocCount !== 1 ? "s" : ""} free</span>
+                    </span>
+                    {selectedNode?.nodeId === node.nodeId && (
+                      <span className="h-2 w-2 rounded-full bg-neon-400 flex-shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="flex gap-4">
               <button
@@ -235,17 +292,33 @@ export default function Plans() {
               >
                 Cancel
               </button>
-              <button
+              <ButtonSpinner
                 type="submit"
-                disabled={purchasing}
-                className="button-3d flex-1 rounded-lg bg-neon-500/20 px-4 py-2 text-sm font-semibold text-neon-200 hover:bg-neon-500/30 disabled:opacity-60"
+                loading={purchasing}
+                className="button-3d flex-1 rounded-lg bg-neon-500/20 px-4 py-2 text-sm font-semibold text-neon-200 hover:bg-neon-500/30"
               >
-                {purchasing ? "Processing..." : "Purchase Server"}
-              </button>
+                Purchase Server
+              </ButtonSpinner>
             </div>
           </form>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmOpen}
+        title="Confirm Purchase"
+        message={`Deploy "${serverName}" using the ${selectedPlan?.name} plan?`}
+        detail={
+          selectedPlan?.type === "coin"
+            ? `This will cost ${selectedPlan?.coin_price} coins for ${selectedPlan?.duration_days} days.`
+            : `This will charge ₹${selectedPlan?.price?.toFixed(2)} for ${selectedPlan?.duration_days} days.`
+        }
+        confirmLabel="Purchase"
+        confirmVariant="primary"
+        loading={purchasing}
+        onConfirm={handleConfirmPurchase}
+        onClose={() => setConfirmOpen(false)}
+      />
     </div>
   )
 }

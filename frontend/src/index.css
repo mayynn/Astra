@@ -8,6 +8,10 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Dynamic background CSS variables — set by AppUIContext when settings load */
+  --site-bg-image: none;
+  --site-overlay-opacity: 0.45;
 }
 
 * {
@@ -17,11 +21,36 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.2), transparent 40%),
+  color: #e2e8f0;
+  position: relative;
+}
+
+/* Base dark gradient always present */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.2), transparent 40%),
     radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.25), transparent 45%),
     radial-gradient(circle at 0% 100%, rgba(249, 115, 22, 0.2), transparent 35%),
     #070b12;
-  color: #e2e8f0;
+}
+
+/* Dynamic background image layer — applied when admin sets one */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: var(--site-bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: var(--site-overlay-opacity);
+  transition: opacity 0.5s ease, background-image 0.5s ease;
+  pointer-events: none;
 }
 
 a {

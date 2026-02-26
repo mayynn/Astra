@@ -11,6 +11,7 @@ import ticketRoutes from "./tickets.js"
 import adminTicketRoutes from "./adminTickets.js"
 import frontpageRoutes from "./frontpage.js"
 import adminFrontpageRoutes from "./adminFrontpage.js"
+import adminSettingsRoutes from "./adminSettings.js"
 import settingsRoutes from "./settings.js"
 import statsRoutes from "./stats.js"
 
@@ -28,6 +29,7 @@ router.use("/tickets", ticketRoutes)
 router.use("/admin/tickets", adminTicketRoutes)
 router.use("/frontpage", frontpageRoutes)
 router.use("/admin/frontpage", adminFrontpageRoutes)
+router.use("/admin/settings", adminSettingsRoutes)
 router.use("/settings", settingsRoutes)
 router.use("/stats", statsRoutes)
 

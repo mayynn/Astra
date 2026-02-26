@@ -1,6 +1,6 @@
 import axios from "axios"
 import { env } from "../config/env.js"
-import { selectBestNode } from "../utils/selectBestNode.js"
+import { selectBestNode, getAvailableNodes } from "../utils/selectBestNode.js"
 
 const client = axios.create({
   baseURL: `${env.PTERODACTYL_URL.replace(/\/$/, "")}/api/application`,
@@ -89,13 +89,12 @@ export const pterodactyl = {
     }
   },
 
-  async createServer({ name, userId, limits }) {
+  async createServer({ name, userId, limits, nodeId: preferredNodeId = null }) {
     try {
       // Dynamically select the best node based on real-time resource availability.
-      // selectBestNode fetches all nodes from the panel, checks memory/disk headroom
-      // (including overallocation policy), verifies free allocations, and returns
-      // the node with the most free memory plus a ready allocation ID.
-      const { nodeId, allocationId } = await selectBestNode(limits.memory, limits.disk)
+      // If the user picked a specific node (preferredNodeId), that node is used
+      // directly (still verified for capacity + free allocations).
+      const { nodeId, allocationId } = await selectBestNode(limits.memory, limits.disk, preferredNodeId)
 
       console.log("[PTERODACTYL] Creating server:", {
         name,
@@ -165,5 +164,21 @@ export const pterodactyl = {
     } catch (error) {
       handleError(error, "delete")
     }
-  }
+  },
+
+  async deleteUser(pteroUserId) {
+    try {
+      await client.delete(`/users/${pteroUserId}`)
+      console.log("[PTERODACTYL] ✓ Panel user deleted:", pteroUserId)
+    } catch (error) {
+      // 404 means user already gone from panel — not an error
+      if (error.response?.status === 404) {
+        console.log("[PTERODACTYL] Panel user already gone (404):", pteroUserId)
+        return
+      }
+      handleError(error, "user deletion")
+    }
+  },
+
+  getAvailableNodes
 }

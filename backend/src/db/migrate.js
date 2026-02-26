@@ -89,6 +89,22 @@ export default async function migrate() {
       console.log("[Migration] coin_settings already exists")
     }
 
+    // Add name column to servers if not present (fresh installs have it via init.sql)
+    try {
+      await runSync("ALTER TABLE servers ADD COLUMN name TEXT NOT NULL DEFAULT ''")
+      console.log("[Migration] ✓ Added name column to servers")
+    } catch {
+      // Column already exists — safe to ignore
+    }
+
+    // Add location column to servers if not present
+    try {
+      await runSync("ALTER TABLE servers ADD COLUMN location TEXT DEFAULT ''")
+      console.log("[Migration] ✓ Added location column to servers")
+    } catch {
+      // Column already exists — safe to ignore
+    }
+
     // Seed default site_content sections
     console.log("[Migration] Seeding default site_content...")
     for (const section of DEFAULT_SITE_CONTENT) {
@@ -100,6 +116,33 @@ export default async function migrate() {
         ).catch((e) => console.warn("[Migration] site_content seed warn:", e.message))
         console.log(`[Migration] ✓ Seeded site_content: ${section.section_name}`)
       }
+    }
+
+    // Seed default site_settings singleton row
+    console.log("[Migration] Seeding default site_settings...")
+    const existingSettings = await getOne("SELECT id FROM site_settings ORDER BY id ASC LIMIT 1").catch(() => null)
+    if (!existingSettings) {
+      await runSync(
+        `INSERT INTO site_settings (
+          site_name,
+          background_image,
+          background_overlay_opacity,
+          favicon_path,
+          hero_title,
+          hero_subtitle,
+          maintenance_mode
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          "AstraNodes",
+          "",
+          0.45,
+          "",
+          "Hosting crafted for Minecraft empires.",
+          "Launch servers in seconds with premium infrastructure.",
+          0
+        ]
+      ).catch((e) => console.warn("[Migration] site_settings seed warn:", e.message))
+      console.log("[Migration] ✓ Seeded site_settings")
     }
 
     console.log("[Migration] ✓ Database migrated successfully")

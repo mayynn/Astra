@@ -11,7 +11,7 @@ const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"])
 const ALLOWED_MIMETYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"])
 
 // Create uploads directory if it doesn't exist
-const uploadsDir = join(__dirname, "../../uploads/tickets")
+const uploadsDir = join(__dirname, "../../public/uploads/tickets")
 if (!existsSync(uploadsDir)) {
   mkdirSync(uploadsDir, { recursive: true })
   console.log("[MULTER] Created uploads directory:", uploadsDir)

@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS plans_real (
 CREATE TABLE IF NOT EXISTS servers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
   plan_type TEXT NOT NULL CHECK (plan_type IN ('coin', 'real')),
   plan_id INTEGER NOT NULL,
   pterodactyl_server_id INTEGER,
@@ -52,6 +53,7 @@ CREATE TABLE IF NOT EXISTS servers (
   suspended_at TEXT,
   grace_expires_at TEXT,
   status TEXT NOT NULL CHECK (status IN ('active', 'suspended', 'deleted')),
+  location TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
@@ -121,3 +123,48 @@ CREATE TABLE IF NOT EXISTS landing_plans (
 );
 
 CREATE INDEX IF NOT EXISTS idx_landing_plans_active ON landing_plans(active);
+
+-- ─── Dynamic Site Settings & CMS ───────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS site_settings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  site_name TEXT,
+  background_image TEXT,
+  background_overlay_opacity REAL,
+  favicon_path TEXT,
+  hero_title TEXT,
+  hero_subtitle TEXT,
+  maintenance_mode INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS plans (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT,
+  ram INTEGER,
+  cpu INTEGER,
+  storage INTEGER,
+  price REAL,
+  description TEXT,
+  is_active INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS features (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT,
+  description TEXT,
+  icon TEXT
+);
+
+CREATE TABLE IF NOT EXISTS vouchers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT UNIQUE,
+  coins INTEGER,
+  expires_at TEXT,
+  is_active INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS announcements (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  message TEXT,
+  is_active INTEGER DEFAULT 1
+);

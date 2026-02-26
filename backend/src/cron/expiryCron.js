@@ -34,7 +34,7 @@ async function processExpiring() {
   )
 
   for (const server of expiring) {
-    const user = await getOne("SELECT * FROM users WHERE id = ?", [server.user_id])
+    const user = await getOne("SELECT id, coins, balance FROM users WHERE id = ?", [server.user_id])
     const plan = await getPlan(server.plan_type, server.plan_id)
     if (!user || !plan) continue
 

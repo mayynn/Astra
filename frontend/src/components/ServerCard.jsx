@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { MapPin } from "lucide-react"
 import Badge from "./Badge.jsx"
 
 export default function ServerCard({ server, onRenew }) {
@@ -70,7 +71,14 @@ export default function ServerCard({ server, onRenew }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-slate-100">{server.name}</h3>
-          <p className="text-sm text-slate-400">{server.plan}</p>
+          <p className="text-sm text-slate-400">
+            {server.plan}
+            {server.location && (
+              <span className="ml-2 inline-flex items-center gap-1 text-xs text-slate-500">
+                <MapPin className="h-3 w-3" />{server.location}
+              </span>
+            )}
+          </p>
         </div>
         <Badge label={server.status} tone={statusTone[server.status]} />
       </div>

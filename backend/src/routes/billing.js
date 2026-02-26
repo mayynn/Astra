@@ -103,7 +103,7 @@ router.post(
 router.get("/utr", requireAuth, async (req, res, next) => {
   try {
     const submissions = await query(
-      "SELECT * FROM utr_submissions WHERE user_id = ? ORDER BY created_at DESC",
+      "SELECT id, amount, utr_number, status, created_at FROM utr_submissions WHERE user_id = ? ORDER BY created_at DESC",
       [req.user.id]
     )
     res.json(submissions)

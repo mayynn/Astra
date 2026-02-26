@@ -2,6 +2,8 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import SectionHeader from "../components/SectionHeader.jsx"
 import Badge from "../components/Badge.jsx"
+import ConfirmModal from "../components/ConfirmModal.jsx"
+import { useAppUI } from "../context/AppUIContext.jsx"
 import { api } from "../services/api.js"
 import {
   Package,
@@ -45,7 +47,6 @@ const iconMap = {
 }
 
 export default function AdminPanel() {
-  const [tab, setTab] = useState("users")
   const [users, setUsers] = useState([])
   const [servers, setServers] = useState([])
   const [utrs, setUtrs] = useState([])
@@ -67,7 +68,13 @@ export default function AdminPanel() {
   const [couponForm, setCouponForm] = useState({})
   const [savingCoupon, setSavingCoupon] = useState(false)
   const [deletingCoupon, setDeletingCoupon] = useState({})
+  // Confirm modals state
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: "", message: "", detail: "", onConfirm: null, loading: false })
   const navigate = useNavigate()
+  const { showSuccess, showError } = useAppUI()
+
+  const openConfirm = (opts) => setConfirmModal({ open: true, loading: false, ...opts })
+  const closeConfirm = () => setConfirmModal({ open: false, title: "", message: "", detail: "", onConfirm: null, loading: false })
 
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -122,19 +129,28 @@ export default function AdminPanel() {
   }
 
   const handleDeleteUser = async (userId, userEmail) => {
-    if (!window.confirm(`Permanently delete user "${userEmail}"? This will remove all their servers, tickets, and data. This cannot be undone.`)) return
-    setDeletingUser((prev) => ({ ...prev, [userId]: true }))
-    setError("")
-
-    try {
-      const token = localStorage.getItem("token")
-      await api.deleteUser(token, userId)
-      setUsers((prev) => prev.filter((u) => u.id !== userId))
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setDeletingUser((prev) => ({ ...prev, [userId]: false }))
-    }
+    openConfirm({
+      title: "Delete User",
+      message: `Permanently delete "${userEmail}"?`,
+      detail: "This removes all their servers, tickets, and data. Cannot be undone.",
+      confirmLabel: "Delete User",
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, loading: true }))
+        setDeletingUser((prev) => ({ ...prev, [userId]: true }))
+        try {
+          const token = localStorage.getItem("token")
+          await api.deleteUser(token, userId)
+          setUsers((prev) => prev.filter((u) => u.id !== userId))
+          showSuccess(`User "${userEmail}" deleted`)
+          closeConfirm()
+        } catch (err) {
+          showError(err.message || "Failed to delete user")
+          setConfirmModal((prev) => ({ ...prev, loading: false }))
+        } finally {
+          setDeletingUser((prev) => ({ ...prev, [userId]: false }))
+        }
+      }
+    })
   }
 
   const handleSuspendServer = async (serverId) => {
@@ -156,25 +172,29 @@ export default function AdminPanel() {
   }
 
   const handleDeleteServer = async (serverId) => {
-    if (!confirm("Are you sure you want to delete this server? This action cannot be undone.")) {
-      return
-    }
-
-    setDeleting((prev) => ({ ...prev, [serverId]: true }))
-    setError("")
-
-    try {
-      const token = localStorage.getItem("token")
-      await api.deleteServer(token, serverId)
-
-      // Refresh servers
-      const data = await api.getServers(token)
-      setServers(data || [])
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setDeleting((prev) => ({ ...prev, [serverId]: false }))
-    }
+    openConfirm({
+      title: "Delete Server",
+      message: "Permanently delete this server?",
+      detail: "The Pterodactyl server will be removed. This action cannot be undone.",
+      confirmLabel: "Delete Server",
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, loading: true }))
+        setDeleting((prev) => ({ ...prev, [serverId]: true }))
+        try {
+          const token = localStorage.getItem("token")
+          await api.deleteServer(token, serverId)
+          const data = await api.getServers(token)
+          setServers(data || [])
+          showSuccess("Server deleted")
+          closeConfirm()
+        } catch (err) {
+          showError(err.message || "Failed to delete server")
+          setConfirmModal((prev) => ({ ...prev, loading: false }))
+        } finally {
+          setDeleting((prev) => ({ ...prev, [serverId]: false }))
+        }
+      }
+    })
   }
 
   const openPlanModal = (type, mode, data = null) => {
@@ -346,17 +366,28 @@ export default function AdminPanel() {
   }
 
   const handleDeleteCoupon = async (id) => {
-    if (!confirm("Delete this coupon code? Users will no longer be able to redeem it.")) return
-    setDeletingCoupon((prev) => ({ ...prev, [id]: true }))
-    try {
-      const token = localStorage.getItem("token")
-      await api.deleteCoupon(token, id)
-      setCoupons((prev) => prev.filter((c) => c.id !== id))
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setDeletingCoupon((prev) => ({ ...prev, [id]: false }))
-    }
+    openConfirm({
+      title: "Delete Coupon",
+      message: "Delete this coupon code?",
+      detail: "Users will no longer be able to redeem it.",
+      confirmLabel: "Delete Coupon",
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, loading: true }))
+        setDeletingCoupon((prev) => ({ ...prev, [id]: true }))
+        try {
+          const token = localStorage.getItem("token")
+          await api.deleteCoupon(token, id)
+          setCoupons((prev) => prev.filter((c) => c.id !== id))
+          showSuccess("Coupon deleted")
+          closeConfirm()
+        } catch (err) {
+          showError(err.message || "Failed to delete coupon")
+          setConfirmModal((prev) => ({ ...prev, loading: false }))
+        } finally {
+          setDeletingCoupon((prev) => ({ ...prev, [id]: false }))
+        }
+      }
+    })
   }
 
   const handleApproveUTR = async (utrId) => {
@@ -424,31 +455,9 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* Tab Navigation */}
-      <div className="flex gap-2 border-b border-slate-800/60">
-        {["users", "servers", "utr", "plans", "coupons"].map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-semibold transition-colors ${
-              tab === t
-                ? "border-b-2 border-aurora-500 text-aurora-200"
-                : "text-slate-400 hover:text-slate-300"
-            }`}
-          >
-            {t === "users" ? "Users"
-              : t === "servers" ? "Servers"
-              : t === "utr" ? "UTR Submissions"
-              : t === "plans" ? "Plans"
-              : "Coupon Codes"}
-          </button>
-        ))}
-      </div>
-
-      {/* Users Tab */}
-      {tab === "users" && (
-        <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
-          <p className="text-sm text-slate-400 mb-4">Total Users: {users.length}</p>
+      {/* Users Section */}
+      <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
+        <h2 className="text-base font-semibold text-slate-200 mb-3 flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-aurora-400 inline-block" /> Users ({users.length})</h2>
           <div className="space-y-3">
             {users.map((user) => (
               <div
@@ -487,12 +496,10 @@ export default function AdminPanel() {
             ))}
           </div>
         </div>
-      )}
 
-      {/* Servers Tab */}
-      {tab === "servers" && (
-        <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
-          <p className="text-sm text-slate-400 mb-4">Total Servers: {servers.length}</p>
+      {/* Servers Section */}
+      <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
+        <h2 className="text-base font-semibold text-slate-200 mb-3 flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-neon-400 inline-block" /> Servers ({servers.length})</h2>
           <div className="space-y-3">
             {servers.map((server) => (
               <div
@@ -501,7 +508,10 @@ export default function AdminPanel() {
               >
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-slate-100">{server.name}</p>
-                  <p className="text-xs text-slate-500">Owner: {server.owner_email}</p>
+                  <p className="text-xs text-slate-500">
+                    Owner: {server.owner_email}
+                    {server.location && <span className="ml-2 text-slate-600">📍 {server.location}</span>}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge
@@ -537,12 +547,10 @@ export default function AdminPanel() {
             ))}
           </div>
         </div>
-      )}
 
-      {/* UTR Submissions Tab */}
-      {tab === "utr" && (
-        <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
-          <p className="text-sm text-slate-400 mb-4">Total Submissions: {utrs.length}</p>
+      {/* UTR Section */}
+      <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
+        <h2 className="text-base font-semibold text-slate-200 mb-3 flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-amber-400 inline-block" /> UTR Submissions ({utrs.length})</h2>
           <div className="space-y-3">
             {utrs.map((utr) => (
               <div
@@ -604,11 +612,9 @@ export default function AdminPanel() {
             )}
           </div>
         </div>
-      )}
 
-      {/* Plans Tab */}
-      {tab === "plans" && (
-        <div className="space-y-6">
+      {/* Plans Section */}
+      <div className="space-y-6">
           {/* Coin Plans Section */}
           <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
             <div className="flex items-center justify-between mb-4">
@@ -723,13 +729,11 @@ export default function AdminPanel() {
             </div>
           </div>
         </div>
-      )}
 
-      {/* Coupons Tab */}
-      {tab === "coupons" && (
-        <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-slate-400">Total Codes: {coupons.length}</p>
+      {/* Coupons Section */}
+      <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-slate-200 flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-ember-400 inline-block" /> Coupon Codes ({coupons.length})</h2>
             <button
               onClick={() => openCouponModal('create')}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-aurora-900/30 hover:bg-aurora-900/50 text-aurora-200 transition-all duration-200 hover:scale-105"
@@ -781,183 +785,6 @@ export default function AdminPanel() {
             )}
           </div>
         </div>
-      )}
-
-      {/* Coupon Create/Edit Modal */}
-      {couponModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="relative w-full max-w-md rounded-2xl border border-slate-800/60 bg-ink-900 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-slate-100">
-                {couponModal.mode === 'create' ? 'New Coupon Code' : 'Edit Coupon Code'}
-              </h3>
-              <button onClick={closeCouponModal} className="p-2 rounded-lg hover:bg-slate-800/60 text-slate-400 hover:text-slate-300">
-                <X size={20} />
-              </button>
-            </div>
-
-            {error && (
-              <div className="mb-4 rounded-lg bg-red-900/20 border border-red-700/30 p-3 text-sm text-red-300">{error}</div>
-            )}
-
-            <form onSubmit={handleSaveCoupon} className="space-y-4">
-              {/* Code */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Code</label>
-                <input
-                  type="text"
-                  value={couponForm.code || ''}
-                  onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
-                  placeholder="e.g. LAUNCH50"
-                  required
-                  className="w-full px-4 py-2 rounded-lg border border-slate-700/50 bg-ink-950/60 text-slate-200 font-mono placeholder-slate-500 focus:outline-none focus:border-aurora-500/50"
-                />
-              </div>
-
-              {/* Coins */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Coins to Give</label>
-                <input
-                  type="number"
-                  value={couponForm.coin_reward || ''}
-                  onChange={(e) => setCouponForm({ ...couponForm, coin_reward: e.target.value })}
-                  placeholder="500"
-                  required
-                  min="1"
-                  className="w-full px-4 py-2 rounded-lg border border-slate-700/50 bg-ink-950/60 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-aurora-500/50"
-                />
-              </div>
-
-              {/* Use limits row */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Total Use Limit</label>
-                  <input
-                    type="number"
-                    value={couponForm.max_uses || ''}
-                    onChange={(e) => setCouponForm({ ...couponForm, max_uses: e.target.value })}
-                    placeholder="100"
-                    required
-                    min="1"
-                    className="w-full px-4 py-2 rounded-lg border border-slate-700/50 bg-ink-950/60 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-aurora-500/50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Per-User Limit</label>
-                  <input
-                    type="number"
-                    value={couponForm.per_user_limit || 1}
-                    onChange={(e) => setCouponForm({ ...couponForm, per_user_limit: e.target.value })}
-                    placeholder="1"
-                    required
-                    min="1"
-                    className="w-full px-4 py-2 rounded-lg border border-slate-700/50 bg-ink-950/60 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-aurora-500/50"
-                  />
-                </div>
-              </div>
-
-              {/* Expiry */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Expiry Date &amp; Time</label>
-                <input
-                  type="datetime-local"
-                  value={couponForm.expires_at || ''}
-                  onChange={(e) => setCouponForm({ ...couponForm, expires_at: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 rounded-lg border border-slate-700/50 bg-ink-950/60 text-slate-200 focus:outline-none focus:border-aurora-500/50"
-                />
-              </div>
-
-              {/* Active toggle */}
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={Boolean(couponForm.active)}
-                  onChange={(e) => setCouponForm({ ...couponForm, active: e.target.checked })}
-                  className="rounded border-slate-700/50 bg-ink-950/60 text-aurora-500 focus:ring-aurora-500/50"
-                />
-                <span className="text-sm font-medium text-slate-300">Active (users can redeem)</span>
-              </label>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="submit"
-                  disabled={savingCoupon}
-                  className="flex-1 px-6 py-3 rounded-lg bg-aurora-900/30 hover:bg-aurora-900/50 text-aurora-200 font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {savingCoupon ? 'Saving...' : couponModal.mode === 'create' ? 'Create Code' : 'Update Code'}
-                </button>
-                <button
-                  type="button"
-                  onClick={closeCouponModal}
-                  disabled={savingCoupon}
-                  className="px-6 py-3 rounded-lg bg-slate-800/60 hover:bg-slate-700/60 text-slate-300 font-semibold transition-colors disabled:opacity-60"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Coupons Tab */}
-      {tab === "coupons" && (
-        <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-slate-400">Total Codes: {coupons.length}</p>
-            <button
-              onClick={() => openCouponModal('create')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-aurora-900/30 hover:bg-aurora-900/50 text-aurora-200 transition-all duration-200 hover:scale-105"
-            >
-              <Plus size={16} />
-              New Code
-            </button>
-          </div>
-          <div className="space-y-3">
-            {coupons.map((c) => (
-              <div
-                key={c.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800/60 bg-ink-950/60 px-4 py-3"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-mono font-bold text-slate-100 tracking-widest">{c.code}</p>
-                    {!c.active && <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">Inactive</span>}
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">
-                    <span className="text-neon-300 font-semibold">{c.coin_reward} coins</span>
-                    {" · "}
-                    Uses: {c.times_used ?? 0} / {c.max_uses}
-                    {" · "}
-                    Per user: {c.per_user_limit}
-                    {" · "}
-                    Expires: {c.expires_at ? new Date(c.expires_at).toLocaleDateString() : "—"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => openCouponModal('edit', c)}
-                    className="p-2 rounded bg-slate-800/60 hover:bg-slate-700/60 text-slate-300 transition-colors"
-                  >
-                    <Edit2 size={14} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteCoupon(c.id)}
-                    disabled={deletingCoupon[c.id]}
-                    className="p-2 rounded bg-red-900/20 hover:bg-red-900/40 text-red-300 transition-colors disabled:opacity-60"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {coupons.length === 0 && (
-              <p className="text-slate-400 text-center py-8">No coupon codes yet — create one above</p>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Coupon Create/Edit Modal */}
       {couponModal.open && (
@@ -1333,6 +1160,19 @@ export default function AdminPanel() {
           </div>
         </div>
       )}
+
+      {/* Global confirm modal for delete actions */}
+      <ConfirmModal
+        open={confirmModal.open}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        detail={confirmModal.detail}
+        confirmLabel={confirmModal.confirmLabel || "Confirm"}
+        confirmVariant="danger"
+        loading={confirmModal.loading}
+        onConfirm={confirmModal.onConfirm}
+        onClose={closeConfirm}
+      />
     </div>
   )
 }

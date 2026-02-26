@@ -91,8 +91,8 @@ app.use(express.json({ limit: "2mb" }))
 app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"))
 app.use(rateLimiter)
 
-// Serve uploaded ticket images statically
-const uploadsPath = join(__dirname, "../uploads")
+// Serve uploaded assets statically (favicons/backgrounds/tickets)
+const uploadsPath = join(__dirname, "../public/uploads")
 app.use("/uploads", express.static(uploadsPath))
 console.log("[Server] Serving static files from:", uploadsPath)
 

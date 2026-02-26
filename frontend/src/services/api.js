@@ -15,6 +15,18 @@ function getApiUrl() {
   return "http://localhost:4000/api"
 }
 
+// Returns the backend origin (no /api suffix) — used to build full URLs for uploads
+export function getBackendBaseUrl() {
+  if (import.meta.env.VITE_API_URL) {
+    // Strip trailing /api if present
+    return import.meta.env.VITE_API_URL.replace(/\/api$/, "")
+  }
+  if (window.location.hostname.includes("app.github.dev")) {
+    return window.location.origin.replace("-5173.", "-4000.")
+  }
+  return "http://localhost:4000"
+}
+
 const API_URL = getApiUrl()
 
 export const api = {
@@ -53,6 +65,14 @@ export const api = {
   },
 
   // Servers
+  getAvailableNodes: async (token) => {
+    const res = await fetch(`${API_URL}/servers/nodes`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) return []
+    return res.json()
+  },
+
   getUserServers: async (token) => {
     const res = await fetch(`${API_URL}/servers`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -61,14 +81,20 @@ export const api = {
     return res.json()
   },
 
-  purchaseServer: async (token, planType, planId, serverName) => {
+  purchaseServer: async (token, planType, planId, serverName, nodeId, locationName) => {
     const res = await fetch(`${API_URL}/servers/purchase`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({ plan_type: planType, plan_id: planId, server_name: serverName })
+      body: JSON.stringify({
+        plan_type: planType,
+        plan_id: planId,
+        server_name: serverName,
+        node_id: nodeId || undefined,
+        location: locationName || ""
+      })
     })
     if (!res.ok) throw new Error((await res.json()).error || "Purchase failed")
     return res.json()
@@ -610,7 +636,83 @@ export const api = {
     })
     if (!res.ok) throw new Error("Failed to toggle popular status")
     return res.json()
+  },
+
+  // ─── Site Settings (public) ───────────────────────────────────────────────
+
+  getSiteSettings: async () => {
+    const res = await fetch(`${API_URL}/settings/site`)
+    if (!res.ok) return null
+    const json = await res.json()
+    return json.data || json
+  },
+
+  // ─── Admin: Site Settings ─────────────────────────────────────────────────
+
+  updateSiteSettings: async (payload) => {
+    const token = localStorage.getItem("token")
+    const res = await fetch(`${API_URL}/admin/settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) throw new Error((await res.json()).message || "Failed to update settings")
+    return res.json()
+  },
+
+  uploadBackgroundImage: async (file) => {
+    const token = localStorage.getItem("token")
+    const formData = new FormData()
+    formData.append("background", file)
+
+    const res = await fetch(`${API_URL}/admin/settings/background-image`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    })
+    if (!res.ok) throw new Error((await res.json()).message || "Upload failed")
+    return res.json()
+  },
+
+  uploadFavicon: async (file) => {
+    const token = localStorage.getItem("token")
+    const formData = new FormData()
+    formData.append("favicon", file)
+
+    const res = await fetch(`${API_URL}/admin/settings/favicon`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    })
+    if (!res.ok) throw new Error((await res.json()).message || "Upload failed")
+    return res.json()
+  },
+
+  uploadLogo: async (file) => {
+    const token = localStorage.getItem("token")
+    const formData = new FormData()
+    formData.append("logo", file)
+
+    const res = await fetch(`${API_URL}/admin/settings/logo`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    })
+    if (!res.ok) throw new Error((await res.json()).message || "Upload failed")
+    return res.json()
+  },
+
+  // ─── Auth: Reset Password ─────────────────────────────────────────────────
+
+  resetPassword: async (currentPassword, newPassword) => {
+    const token = localStorage.getItem("token")
+    const res = await fetch(`${API_URL}/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ currentPassword, newPassword })
+    })
+    if (!res.ok) throw new Error((await res.json()).message || "Password reset failed")
+    return res.json()
   }
 }
-
 export default api

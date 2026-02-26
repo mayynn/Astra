@@ -4,14 +4,14 @@ export function errorHandler(err, req, res, next) {
       path: req.path,
       errors: err.errors
     })
-    return res.status(400).json({ error: "Validation failed", details: err.errors })
+    return res.status(400).json({ success: false, message: "Validation failed", data: { details: err.errors } })
   }
 
   if (err.statusCode) {
     console.error("[ERROR]", err.statusCode, err.message)
-    return res.status(err.statusCode).json({ error: err.message })
+    return res.status(err.statusCode).json({ success: false, message: err.message, data: {} })
   }
 
   console.error("[ERROR] Unhandled error:", err)
-  res.status(500).json({ error: "Internal server error" })
+  res.status(500).json({ success: false, message: "Internal server error", data: {} })
 }

@@ -2,15 +2,17 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import SectionHeader from "../components/SectionHeader.jsx"
 import ServerCard from "../components/ServerCard.jsx"
+import { SkeletonCard } from "../components/Skeletons.jsx"
 import { api } from "../services/api.js"
+import { useAppUI } from "../context/AppUIContext.jsx"
 
 export default function MyServers() {
   const [servers, setServers] = useState([])
   const [loading, setLoading] = useState(true)
   const [renewing, setRenewing] = useState({})
-  const [error, setError] = useState("")
   const [countdowns, setCountdowns] = useState({})
   const navigate = useNavigate()
+  const { showSuccess, showError } = useAppUI()
 
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -24,7 +26,7 @@ export default function MyServers() {
         const data = await api.getUserServers(token)
         setServers(data || [])
       } catch (err) {
-        setError(err.message)
+        showError(err.message || "Failed to load servers.")
       } finally {
         setLoading(false)
       }
@@ -83,17 +85,17 @@ export default function MyServers() {
 
   const handleRenew = async (serverId) => {
     setRenewing((prev) => ({ ...prev, [serverId]: true }))
-    setError("")
 
     try {
       const token = localStorage.getItem("token")
       await api.renewServer(token, serverId)
+      showSuccess("Server renewed successfully.")
 
       // Refresh servers
       const data = await api.getUserServers(token)
       setServers(data || [])
     } catch (err) {
-      setError(err.message)
+      showError(err.message || "Failed to renew server.")
     } finally {
       setRenewing((prev) => ({ ...prev, [serverId]: false }))
     }
@@ -101,8 +103,12 @@ export default function MyServers() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <p className="text-slate-400">Loading servers...</p>
+      <div className="space-y-6">
+        <SectionHeader title="My Servers" subtitle="Expiry countdowns and renewal actions update in real time." />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
       </div>
     )
   }
@@ -133,11 +139,7 @@ export default function MyServers() {
         title="My Servers"
         subtitle="Expiry countdowns and renewal actions update in real time."
       />
-      {error && (
-        <div className="rounded-lg bg-red-900/20 border border-red-700/30 p-3 text-sm text-red-300">
-          {error}
-        </div>
-      )}
+
       <div className="grid gap-4 lg:grid-cols-2">
         {servers.map((server) => (
           <div

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom"
-import { LayoutDashboard, Package, Coins, Ticket, CreditCard, Server, Shield, LogOut, LifeBuoy, Layout, Star } from "lucide-react"
+import { LayoutDashboard, Package, Coins, Ticket, CreditCard, Server, Shield, LogOut, LifeBuoy, Layout, Star, Settings, SlidersHorizontal, Zap, MapPin, Users, BookOpen, Activity } from "lucide-react"
 import Logo from "./Logo.jsx"
 
 const navItems = [
@@ -9,7 +9,8 @@ const navItems = [
   { to: "/coupons", label: "Redeem", icon: Ticket },
   { to: "/billing", label: "Billing", icon: CreditCard },
   { to: "/servers", label: "My Servers", icon: Server },
-  { to: "/support", label: "Support", icon: LifeBuoy }
+  { to: "/support", label: "Support", icon: LifeBuoy },
+  { to: "/settings", label: "Settings", icon: Settings }
 ]
 
 export default function Sidebar() {
@@ -75,6 +76,48 @@ export default function Sidebar() {
                 className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
               >
                 <Star className="h-3 w-3" /> Land. Plans
+              </NavLink>
+              <NavLink
+                to="/admin/plans"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
+              >
+                <Package className="h-3 w-3" /> Plans
+              </NavLink>
+              <NavLink
+                to="/admin/features"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
+              >
+                <Zap className="h-3 w-3" /> Features
+              </NavLink>
+              <NavLink
+                to="/admin/locations"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
+              >
+                <MapPin className="h-3 w-3" /> Locations
+              </NavLink>
+              <NavLink
+                to="/admin/about"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
+              >
+                <Users className="h-3 w-3" /> About
+              </NavLink>
+              <NavLink
+                to="/admin/knowledgebase"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
+              >
+                <BookOpen className="h-3 w-3" /> Knowledgebase
+              </NavLink>
+              <NavLink
+                to="/admin/status"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
+              >
+                <Activity className="h-3 w-3" /> Status
+              </NavLink>
+              <NavLink
+                to="/admin/site-settings"
+                className="col-span-2 flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
+              >
+                <SlidersHorizontal className="h-3 w-3" /> Site Settings
               </NavLink>
             </div>
           </div>

@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import SectionHeader from "../components/SectionHeader.jsx"
 import Badge from "../components/Badge.jsx"
+import ConfirmModal from "../components/ConfirmModal.jsx"
+import { useAppUI } from "../context/AppUIContext.jsx"
 import { api } from "../services/api.js"
 
 export default function AdminTicketDetail() {
@@ -15,8 +17,11 @@ export default function AdminTicketDetail() {
   const [statusChanging, setStatusChanging] = useState(false)
   const [error, setError] = useState("")
   const [enlargedImage, setEnlargedImage] = useState(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const messagesEndRef = useRef(null)
   const navigate = useNavigate()
+  const { showSuccess, showError } = useAppUI()
 
   const getApiUrl = () => {
     if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL.replace("/api", "")
@@ -113,16 +118,17 @@ export default function AdminTicketDetail() {
   }
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this ticket? This action cannot be undone.")) {
-      return
-    }
-
+    setDeleting(true)
     try {
       const token = localStorage.getItem("token")
       await api.deleteTicket(token, id)
+      showSuccess("Ticket deleted successfully")
       navigate("/admin/tickets")
     } catch (err) {
-      setError(err.message)
+      showError(err.message || "Failed to delete ticket")
+    } finally {
+      setDeleting(false)
+      setDeleteConfirmOpen(false)
     }
   }
 
@@ -236,7 +242,7 @@ export default function AdminTicketDetail() {
               </button>
             )}
             <button
-              onClick={handleDelete}
+              onClick={() => setDeleteConfirmOpen(true)}
               className="button-3d rounded-lg bg-red-900/20 border border-red-700/30 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-900/30"
             >
               Delete
@@ -370,6 +376,18 @@ export default function AdminTicketDetail() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={deleteConfirmOpen}
+        title="Delete Ticket"
+        message={`Permanently delete ticket #${ticket?.id}?`}
+        detail="This removes all messages and attachments. This action cannot be undone."
+        confirmLabel="Delete Ticket"
+        confirmVariant="danger"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onClose={() => setDeleteConfirmOpen(false)}
+      />
     </div>
   )
 }

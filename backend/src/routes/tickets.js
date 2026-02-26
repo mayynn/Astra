@@ -13,7 +13,7 @@ router.use(requireAuth)
 // Validation schemas
 const createTicketSchema = z.object({
   body: z.object({
-    category: z.enum(["Billing", "Server Issue", "Bug", "Other"]),
+    category: z.enum(["Billing", "Server Issue", "Bug", "Other", "General Inquiry"]),
     subject: z.string().min(5).max(200),
     message: z.string().min(10).max(2000),
     priority: z.enum(["Low", "Medium", "High"]).optional().default("Medium")

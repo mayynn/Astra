@@ -72,7 +72,7 @@ router.get("/", async (req, res, next) => {
 // PUT /api/admin/frontpage/:section
 const sectionSchema = z.object({
   params: z.object({
-    section: z.enum(["hero", "features", "about", "stats", "footer"])
+    section: z.enum(["hero", "features", "about", "stats", "footer", "features_page", "locations_page", "about_page", "knowledgebase_page", "status_page"])
   }),
   body: z.object({
     content: z.any()

@@ -128,9 +128,10 @@ function effectiveCapacity(limit, overalloc) {
  * @throws {Error} with statusCode 502 if the panel API is unreachable
  * @throws {Error} with statusCode 503 if no node has sufficient capacity
  */
-export async function selectBestNode(requiredMemory, requiredDisk) {
+export async function selectBestNode(requiredMemory, requiredDisk, preferredNodeId = null) {
   console.log(
-    `[NODE-SELECT] Looking for node with ≥${requiredMemory} MB RAM, ≥${requiredDisk} MB disk`
+    `[NODE-SELECT] Looking for node with ≥${requiredMemory} MB RAM, ≥${requiredDisk} MB disk` +
+    (preferredNodeId ? ` (preferred nodeId=${preferredNodeId})` : "")
   )
 
   // ── 1. Fetch node list ──────────────────────────────────────────────────
@@ -148,6 +149,16 @@ export async function selectBestNode(requiredMemory, requiredDisk) {
     const e = new Error("No nodes are configured in the Pterodactyl panel.")
     e.statusCode = 503
     throw e
+  }
+
+  // If the user picked a specific node, restrict to just that node
+  if (preferredNodeId) {
+    nodes = nodes.filter((n) => n.id === preferredNodeId)
+    if (nodes.length === 0) {
+      const e = new Error("The selected location is no longer available. Please choose another.")
+      e.statusCode = 503
+      throw e
+    }
   }
 
   // ── 2. Filter and score each node ──────────────────────────────────────
@@ -239,4 +250,55 @@ export async function selectBestNode(requiredMemory, requiredDisk) {
     nodeId:       best.nodeId,
     allocationId: best.allocationId
   }
+}
+
+/**
+ * Return all eligible nodes (enough resources + free allocations) as a list
+ * suitable for presenting location choices to the user on the frontend.
+ *
+ * @param {number} [requiredMemory=0]
+ * @param {number} [requiredDisk=0]
+ * @returns {Promise<Array<{ nodeId: number, name: string, freeMemMb: number, freeDiskMb: number, freeAllocCount: number }>>}
+ */
+export async function getAvailableNodes(requiredMemory = 0, requiredDisk = 0) {
+  let nodes
+  try {
+    nodes = await fetchAllNodes()
+  } catch {
+    return []
+  }
+
+  const result = []
+
+  for (const node of nodes) {
+    const capMem  = effectiveCapacity(node.memory, node.memory_overallocate ?? 0)
+    const capDisk = effectiveCapacity(node.disk,   node.disk_overallocate   ?? 0)
+
+    const usedMem  = node.allocated_resources?.memory ?? 0
+    const usedDisk = node.allocated_resources?.disk   ?? 0
+
+    const freeMem  = capMem  === Infinity ? Infinity : capMem  - usedMem
+    const freeDisk = capDisk === Infinity ? Infinity : capDisk - usedDisk
+
+    if (freeMem < requiredMemory || freeDisk < requiredDisk) continue
+
+    let freeAllocs = []
+    try {
+      freeAllocs = await fetchFreeAllocations(node.id)
+    } catch {
+      continue
+    }
+
+    if (freeAllocs.length === 0) continue
+
+    result.push({
+      nodeId:        node.id,
+      name:          node.name,
+      freeMemMb:     freeMem === Infinity ? null : freeMem,
+      freeDiskMb:    freeDisk === Infinity ? null : freeDisk,
+      freeAllocCount: freeAllocs.length
+    })
+  }
+
+  return result
 }

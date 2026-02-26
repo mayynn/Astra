@@ -93,13 +93,46 @@ router.delete("/users/:id", async (req, res, next) => {
     if (userId === req.user.id) {
       return res.status(400).json({ message: "Cannot delete your own account" })
     }
-    // Delete related data before removing the user
-    await runSync("DELETE FROM ticket_messages WHERE sender_id = ?", [userId])
+
+    const user = await getOne("SELECT id, pterodactyl_user_id FROM users WHERE id = ?", [userId])
+    if (!user) return res.status(404).json({ error: "User not found" })
+
+    // ── 1. Delete all Pterodactyl servers owned by this user ─────────────
+    const userServers = await query(
+      "SELECT pterodactyl_server_id FROM servers WHERE user_id = ? AND pterodactyl_server_id IS NOT NULL",
+      [userId]
+    )
+    for (const srv of userServers) {
+      if (srv.pterodactyl_server_id) {
+        try {
+          await pterodactyl.deleteServer(srv.pterodactyl_server_id)
+        } catch (err) {
+          console.warn("[ADMIN] Pterodactyl server delete failed (continuing):", srv.pterodactyl_server_id, err.message)
+        }
+      }
+    }
+
+    // ── 2. Delete the Pterodactyl panel user account ──────────────────────
+    if (user.pterodactyl_user_id) {
+      try {
+        await pterodactyl.deleteUser(user.pterodactyl_user_id)
+      } catch (err) {
+        console.warn("[ADMIN] Pterodactyl user delete failed (continuing):", user.pterodactyl_user_id, err.message)
+      }
+    }
+
+    // ── 3. Cascade delete all site data ──────────────────────────────────
+    // Delete all messages in the user's tickets (includes admin replies)
+    await runSync(
+      "DELETE FROM ticket_messages WHERE ticket_id IN (SELECT id FROM tickets WHERE user_id = ?)",
+      [userId]
+    )
     await runSync("DELETE FROM tickets WHERE user_id = ?", [userId])
     await runSync("DELETE FROM coupon_redemptions WHERE user_id = ?", [userId])
     await runSync("DELETE FROM utr_submissions WHERE user_id = ?", [userId])
     await runSync("DELETE FROM servers WHERE user_id = ?", [userId])
     await runSync("DELETE FROM users WHERE id = ?", [userId])
+
     res.json({ status: "ok" })
   } catch (error) {
     next(error)
