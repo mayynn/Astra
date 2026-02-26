@@ -126,8 +126,9 @@ export default function Coins() {
       const result = await api.claimCoins(jwt, earnToken)
       setBalance(prev => prev + result.earned)
       setJustEarned(result.earned)
-      setCooldown(60)
-      setEarnToken(null) // consumed — clear so a fresh one is grabbed next cycle
+      // Reload the page so fresh ads are served
+      setTimeout(() => window.location.reload(), 800)
+      return
     } catch (err) {
       const wait = err.waitSeconds ?? (err.message?.includes("Too many") ? 70 : 0)
       if (wait > 0) {

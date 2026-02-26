@@ -117,20 +117,20 @@ export default function AdminLocations() {
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div>
-                <label className="text-xs uppercase tracking-widest text-slate-500">Flag Emoji</label>
-                <input className="input mt-1 w-full" value={loc.flag} onChange={(e) => update(idx, "flag", e.target.value)} placeholder="🇮🇳" />
+                <label htmlFor={`loc-${idx}-flag`} className="text-xs uppercase tracking-widest text-slate-500">Flag Emoji</label>
+                <input id={`loc-${idx}-flag`} name={`loc-${idx}-flag`} className="input mt-1 w-full" value={loc.flag} onChange={(e) => update(idx, "flag", e.target.value)} placeholder="🇮🇳" />
               </div>
               <div>
-                <label className="text-xs uppercase tracking-widest text-slate-500">City</label>
-                <input className="input mt-1 w-full" value={loc.city} onChange={(e) => update(idx, "city", e.target.value)} placeholder="Mumbai" />
+                <label htmlFor={`loc-${idx}-city`} className="text-xs uppercase tracking-widest text-slate-500">City</label>
+                <input id={`loc-${idx}-city`} name={`loc-${idx}-city`} className="input mt-1 w-full" value={loc.city} onChange={(e) => update(idx, "city", e.target.value)} placeholder="Mumbai" />
               </div>
               <div>
-                <label className="text-xs uppercase tracking-widest text-slate-500">Country</label>
-                <input className="input mt-1 w-full" value={loc.country} onChange={(e) => update(idx, "country", e.target.value)} placeholder="India" />
+                <label htmlFor={`loc-${idx}-country`} className="text-xs uppercase tracking-widest text-slate-500">Country</label>
+                <input id={`loc-${idx}-country`} name={`loc-${idx}-country`} className="input mt-1 w-full" value={loc.country} onChange={(e) => update(idx, "country", e.target.value)} placeholder="India" />
               </div>
               <div>
-                <label className="text-xs uppercase tracking-widest text-slate-500">Latency</label>
-                <input className="input mt-1 w-full" value={loc.latency} onChange={(e) => update(idx, "latency", e.target.value)} placeholder="~5 ms" />
+                <label htmlFor={`loc-${idx}-latency`} className="text-xs uppercase tracking-widest text-slate-500">Latency</label>
+                <input id={`loc-${idx}-latency`} name={`loc-${idx}-latency`} className="input mt-1 w-full" value={loc.latency} onChange={(e) => update(idx, "latency", e.target.value)} placeholder="~5 ms" />
               </div>
             </div>
 

@@ -152,8 +152,10 @@ export default function AdminKnowledgebase() {
                     <div className="flex items-start gap-2">
                       <div className="flex-1 space-y-2">
                         <div>
-                          <label className="text-xs uppercase tracking-widest text-slate-500">Question</label>
+                          <label htmlFor={`kb-${catIdx}-${itemIdx}-q`} className="text-xs uppercase tracking-widest text-slate-500">Question</label>
                           <input
+                            id={`kb-${catIdx}-${itemIdx}-q`}
+                            name={`kb-${catIdx}-${itemIdx}-q`}
                             className="input mt-1 w-full"
                             value={item.q}
                             onChange={(e) => updateItem(catIdx, itemIdx, "q", e.target.value)}
@@ -161,8 +163,10 @@ export default function AdminKnowledgebase() {
                           />
                         </div>
                         <div>
-                          <label className="text-xs uppercase tracking-widest text-slate-500">Answer</label>
+                          <label htmlFor={`kb-${catIdx}-${itemIdx}-a`} className="text-xs uppercase tracking-widest text-slate-500">Answer</label>
                           <textarea
+                            id={`kb-${catIdx}-${itemIdx}-a`}
+                            name={`kb-${catIdx}-${itemIdx}-a`}
                             className="input mt-1 w-full resize-none"
                             rows={3}
                             value={item.a}

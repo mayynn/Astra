@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, cloneElement, isValidElement } from "react"
 import { Link } from "react-router-dom"
 import SectionHeader from "../components/SectionHeader.jsx"
 import Badge from "../components/Badge.jsx"
@@ -342,10 +342,11 @@ export default function AdminLandingPlans() {
 }
 
 function FormField({ label, children }) {
+  const id = `field-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "")}`
   return (
     <div className="space-y-1.5">
-      <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</label>
-      {children}
+      <label htmlFor={id} className="block text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</label>
+      {isValidElement(children) ? cloneElement(children, { id, name: id }) : children}
     </div>
   )
 }

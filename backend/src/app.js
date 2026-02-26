@@ -59,12 +59,16 @@ app.use(helmet({
       scriptSrc: [
         "'self'",
         "'unsafe-inline'",
+        "'unsafe-eval'",
         "https://www.highperformanceformat.com",
         "https://pl28770653.effectivegatecpm.com",
         "https://pl28771198.effectivegatecpm.com",
-        "https://environmenttalentrabble.com"
+        "https://environmenttalentrabble.com",
+        "https://preferencenail.com",
+        "https://weirdopt.com"
       ],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
       connectSrc: ["'self'", "https:"],
       frameSrc: ["'self'", "https:"],

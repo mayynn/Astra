@@ -52,9 +52,12 @@ export default function Register() {
           </div>
         )}
         <div>
-          <label className="text-xs uppercase tracking-[0.3em] text-slate-500">Email</label>
+          <label htmlFor="register-email" className="text-xs uppercase tracking-[0.3em] text-slate-500">Email</label>
           <input
+            id="register-email"
+            name="email"
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -63,9 +66,12 @@ export default function Register() {
           />
         </div>
         <div>
-          <label className="text-xs uppercase tracking-[0.3em] text-slate-500">Password</label>
+          <label htmlFor="register-password" className="text-xs uppercase tracking-[0.3em] text-slate-500">Password</label>
           <input
+            id="register-password"
+            name="password"
             type="password"
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -74,9 +80,12 @@ export default function Register() {
           />
         </div>
         <div>
-          <label className="text-xs uppercase tracking-[0.3em] text-slate-500">Confirm</label>
+          <label htmlFor="register-confirm-password" className="text-xs uppercase tracking-[0.3em] text-slate-500">Confirm</label>
           <input
+            id="register-confirm-password"
+            name="confirmPassword"
             type="password"
+            autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required

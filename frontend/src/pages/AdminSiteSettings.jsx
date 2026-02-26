@@ -163,8 +163,10 @@ export default function AdminSiteSettings() {
           </h3>
 
           <div>
-            <label className="text-xs uppercase tracking-[0.3em] text-slate-500">Site Name</label>
+            <label htmlFor="site-name" className="text-xs uppercase tracking-[0.3em] text-slate-500">Site Name</label>
             <input
+              id="site-name"
+              name="siteName"
               type="text"
               value={settings.siteName}
               onChange={(e) => setSettings((s) => ({ ...s, siteName: e.target.value }))}
@@ -174,8 +176,10 @@ export default function AdminSiteSettings() {
           </div>
 
           <div>
-            <label className="text-xs uppercase tracking-[0.3em] text-slate-500">Hero Title</label>
+            <label htmlFor="hero-title" className="text-xs uppercase tracking-[0.3em] text-slate-500">Hero Title</label>
             <input
+              id="hero-title"
+              name="heroTitle"
               type="text"
               value={settings.heroTitle}
               onChange={(e) => setSettings((s) => ({ ...s, heroTitle: e.target.value }))}
@@ -185,8 +189,10 @@ export default function AdminSiteSettings() {
           </div>
 
           <div>
-            <label className="text-xs uppercase tracking-[0.3em] text-slate-500">Hero Subtitle</label>
+            <label htmlFor="hero-subtitle" className="text-xs uppercase tracking-[0.3em] text-slate-500">Hero Subtitle</label>
             <textarea
+              id="hero-subtitle"
+              name="heroSubtitle"
               value={settings.heroSubtitle}
               onChange={(e) => setSettings((s) => ({ ...s, heroSubtitle: e.target.value }))}
               rows={3}
@@ -196,13 +202,15 @@ export default function AdminSiteSettings() {
           </div>
 
           <div>
-            <label className="text-xs uppercase tracking-[0.3em] text-slate-500">
+            <label htmlFor="bg-overlay-opacity" className="text-xs uppercase tracking-[0.3em] text-slate-500">
               Background Overlay Opacity
               <span className="ml-2 font-mono text-neon-300">
                 {Math.round(Number(settings.backgroundOverlayOpacity) * 100)}%
               </span>
             </label>
             <input
+              id="bg-overlay-opacity"
+              name="backgroundOverlayOpacity"
               type="range"
               min={0}
               max={1}

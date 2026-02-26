@@ -253,8 +253,10 @@ export default function AdminPlans() {
             <form onSubmit={handleSave} className="space-y-4">
               {/* Name */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Plan Name</label>
+                <label htmlFor="plan-name" className="block text-sm font-medium text-slate-300 mb-1">Plan Name</label>
                 <input
+                  id="plan-name"
+                  name="planName"
                   type="text"
                   value={form.name || ""}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -289,8 +291,10 @@ export default function AdminPlans() {
               <div className="grid grid-cols-3 gap-4">
                 {[{ key: "ram", label: "RAM (GB)", ph: "4" }, { key: "cpu", label: "CPU Cores", ph: "2" }, { key: "storage", label: "Storage (GB)", ph: "20" }].map(({ key, label, ph }) => (
                   <div key={key}>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">{label}</label>
+                    <label htmlFor={`plan-${key}`} className="block text-sm font-medium text-slate-300 mb-1">{label}</label>
                     <input
+                      id={`plan-${key}`}
+                      name={key}
                       type="number" min="1" required
                       value={form[key] || ""}
                       onChange={(e) => setForm({ ...form, [key]: e.target.value })}
@@ -303,10 +307,12 @@ export default function AdminPlans() {
 
               {/* Price */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
+                <label htmlFor="plan-price" className="block text-sm font-medium text-slate-300 mb-1">
                   {modal.type === "coin" ? "Coin Price" : "Price (₹)"}
                 </label>
                 <input
+                  id="plan-price"
+                  name="planPrice"
                   type="number" min="0" step="0.01" required
                   value={form[modal.type === "coin" ? "coin_price" : "price"] || ""}
                   onChange={(e) => setForm({ ...form, [modal.type === "coin" ? "coin_price" : "price"]: e.target.value })}
@@ -318,14 +324,16 @@ export default function AdminPlans() {
               {/* Duration */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Duration Type</label>
-                  <select className="input w-full" value={form.duration_type || "days"} onChange={(e) => setForm({ ...form, duration_type: e.target.value })}>
+                  <label htmlFor="plan-duration-type" className="block text-sm font-medium text-slate-300 mb-1">Duration Type</label>
+                  <select id="plan-duration-type" name="durationType" className="input w-full" value={form.duration_type || "days"} onChange={(e) => setForm({ ...form, duration_type: e.target.value })}>
                     {DURATION_TYPES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Duration (days)</label>
+                  <label htmlFor="plan-duration-days" className="block text-sm font-medium text-slate-300 mb-1">Duration (days)</label>
                   <input
+                    id="plan-duration-days"
+                    name="durationDays"
                     type="number" min="1" required
                     value={form.duration_days || ""}
                     onChange={(e) => setForm({ ...form, duration_days: e.target.value })}

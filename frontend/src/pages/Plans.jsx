@@ -242,8 +242,10 @@ export default function Plans() {
           <h3 className="text-lg font-semibold text-neon-200 mb-4">Configure Server</h3>
           <form onSubmit={handleRequestPurchase} className="space-y-4">
             <div>
-              <label className="text-sm text-slate-400">Server Name</label>
+              <label htmlFor="server-name" className="text-sm text-slate-400">Server Name</label>
               <input
+                id="server-name"
+                name="serverName"
                 type="text"
                 value={serverName}
                 onChange={(e) => setServerName(e.target.value)}

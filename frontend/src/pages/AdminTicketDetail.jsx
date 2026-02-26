@@ -318,6 +318,8 @@ export default function AdminTicketDetail() {
           )}
           
           <textarea
+            id="admin-reply-message"
+            name="replyMessage"
             value={replyMessage}
             onChange={(e) => setReplyMessage(e.target.value)}
             placeholder="Type your response..."

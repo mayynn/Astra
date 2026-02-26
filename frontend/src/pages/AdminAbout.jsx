@@ -94,12 +94,12 @@ export default function AdminAbout() {
       <div className="glass rounded-2xl border border-slate-700/40 p-5 space-y-4">
         <h3 className="text-sm font-semibold text-slate-200">Hero Section</h3>
         <div>
-          <label className="text-xs uppercase tracking-widest text-slate-500">Heading</label>
-          <input className="input mt-1 w-full" value={data.heading} onChange={(e) => set("heading", e.target.value)} />
+          <label htmlFor="about-heading" className="text-xs uppercase tracking-widest text-slate-500">Heading</label>
+          <input id="about-heading" name="heading" className="input mt-1 w-full" value={data.heading} onChange={(e) => set("heading", e.target.value)} />
         </div>
         <div>
-          <label className="text-xs uppercase tracking-widest text-slate-500">Subheading</label>
-          <textarea className="input mt-1 w-full resize-none" rows={2} value={data.subheading} onChange={(e) => set("subheading", e.target.value)} />
+          <label htmlFor="about-subheading" className="text-xs uppercase tracking-widest text-slate-500">Subheading</label>
+          <textarea id="about-subheading" name="subheading" className="input mt-1 w-full resize-none" rows={2} value={data.subheading} onChange={(e) => set("subheading", e.target.value)} />
         </div>
       </div>
 
@@ -114,8 +114,8 @@ export default function AdminAbout() {
             { key: "players", label: "Players" },
           ].map(({ key, label }) => (
             <div key={key}>
-              <label className="text-xs uppercase tracking-widest text-slate-500">{label}</label>
-              <input className="input mt-1 w-full" value={data.stats?.[key] || ""} onChange={(e) => setStat(key, e.target.value)} placeholder={DEFAULTS.stats[key]} />
+              <label htmlFor={`about-stat-${key}`} className="text-xs uppercase tracking-widest text-slate-500">{label}</label>
+              <input id={`about-stat-${key}`} name={key} className="input mt-1 w-full" value={data.stats?.[key] || ""} onChange={(e) => setStat(key, e.target.value)} placeholder={DEFAULTS.stats[key]} />
             </div>
           ))}
         </div>
@@ -125,16 +125,16 @@ export default function AdminAbout() {
       <div className="glass rounded-2xl border border-slate-700/40 p-5 space-y-4">
         <h3 className="text-sm font-semibold text-slate-200">Story Section</h3>
         <div>
-          <label className="text-xs uppercase tracking-widest text-slate-500">Section Title</label>
-          <input className="input mt-1 w-full" value={data.storyTitle} onChange={(e) => set("storyTitle", e.target.value)} />
+          <label htmlFor="about-story-title" className="text-xs uppercase tracking-widest text-slate-500">Section Title</label>
+          <input id="about-story-title" name="storyTitle" className="input mt-1 w-full" value={data.storyTitle} onChange={(e) => set("storyTitle", e.target.value)} />
         </div>
         <div>
-          <label className="text-xs uppercase tracking-widest text-slate-500">Paragraph 1</label>
-          <textarea className="input mt-1 w-full resize-none" rows={3} value={data.storyText} onChange={(e) => set("storyText", e.target.value)} />
+          <label htmlFor="about-story-text" className="text-xs uppercase tracking-widest text-slate-500">Paragraph 1</label>
+          <textarea id="about-story-text" name="storyText" className="input mt-1 w-full resize-none" rows={3} value={data.storyText} onChange={(e) => set("storyText", e.target.value)} />
         </div>
         <div>
-          <label className="text-xs uppercase tracking-widest text-slate-500">Paragraph 2</label>
-          <textarea className="input mt-1 w-full resize-none" rows={3} value={data.storyText2} onChange={(e) => set("storyText2", e.target.value)} />
+          <label htmlFor="about-story-text2" className="text-xs uppercase tracking-widest text-slate-500">Paragraph 2</label>
+          <textarea id="about-story-text2" name="storyText2" className="input mt-1 w-full resize-none" rows={3} value={data.storyText2} onChange={(e) => set("storyText2", e.target.value)} />
         </div>
       </div>
 

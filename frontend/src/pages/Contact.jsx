@@ -124,8 +124,9 @@ export default function Contact() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">Subject</label>
+                <label htmlFor="contact-subject" className="mb-1.5 block text-xs font-medium text-slate-400">Subject</label>
                 <input
+                  id="contact-subject"
                   name="subject"
                   value={form.subject}
                   onChange={(e) => setForm((p) => ({ ...p, subject: e.target.value }))}
@@ -134,8 +135,9 @@ export default function Contact() {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">Message</label>
+                <label htmlFor="contact-message" className="mb-1.5 block text-xs font-medium text-slate-400">Message</label>
                 <textarea
+                  id="contact-message"
                   name="message"
                   value={form.message}
                   onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))}

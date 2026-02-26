@@ -134,6 +134,9 @@ export default function Knowledgebase() {
           <div className="relative mx-auto max-w-md mt-4">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
             <input
+              id="kb-search"
+              name="search"
+              aria-label="Search knowledgebase"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search articles…"

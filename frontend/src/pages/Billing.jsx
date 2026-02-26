@@ -142,10 +142,12 @@ export default function Billing() {
               </div>
             )}
             <div>
-              <label className="text-xs uppercase tracking-[0.3em] text-slate-500">Amount Paid (₹)</label>
+              <label htmlFor="billing-amount" className="text-xs uppercase tracking-[0.3em] text-slate-500">Amount Paid (₹)</label>
               <div className="relative mt-2">
                 <IndianRupee size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
+                  id="billing-amount"
+                  name="amount"
                   type="number"
                   step="0.01"
                   min="1"
@@ -158,8 +160,10 @@ export default function Billing() {
               </div>
             </div>
             <div>
-              <label className="text-xs uppercase tracking-[0.3em] text-slate-500">UTR / Reference Number</label>
+              <label htmlFor="billing-utr" className="text-xs uppercase tracking-[0.3em] text-slate-500">UTR / Reference Number</label>
               <input
+                id="billing-utr"
+                name="utrNumber"
                 type="text"
                 value={utrNumber}
                 onChange={(e) => setUtrNumber(e.target.value)}
@@ -170,7 +174,7 @@ export default function Billing() {
               <p className="mt-1 text-xs text-slate-500">Found in your UPI app transaction history</p>
             </div>
             <div>
-              <label className="text-xs uppercase tracking-[0.3em] text-slate-500">Payment Screenshot</label>
+              <label htmlFor="billing-screenshot" className="text-xs uppercase tracking-[0.3em] text-slate-500">Payment Screenshot</label>
               <div
                 onClick={() => fileRef.current?.click()}
                 className="mt-2 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-700/60 bg-ink-900/40 px-4 py-6 text-sm text-slate-400 hover:border-aurora-500/40 hover:text-aurora-300 transition-colors"
@@ -184,6 +188,8 @@ export default function Billing() {
               </div>
               <input
                 ref={fileRef}
+                id="billing-screenshot"
+                name="screenshot"
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,image/webp"
                 onChange={(e) => setScreenshot(e.target.files?.[0] || null)}

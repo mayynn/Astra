@@ -83,8 +83,10 @@ export default function CouponRedeem() {
         <div className="glass rounded-2xl border border-slate-700/40 p-6">
           <form onSubmit={handleRedeem} className="space-y-4">
             <div>
-              <label className="text-xs uppercase tracking-[0.3em] text-slate-500">Code</label>
+              <label htmlFor="coupon-code" className="text-xs uppercase tracking-[0.3em] text-slate-500">Code</label>
               <input
+                id="coupon-code"
+                name="code"
                 type="text"
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}

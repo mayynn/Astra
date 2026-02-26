@@ -806,8 +806,10 @@ export default function AdminPanel() {
             <form onSubmit={handleSaveCoupon} className="space-y-4">
               {/* Code */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Code</label>
+                <label htmlFor="coupon-code" className="block text-sm font-medium text-slate-300 mb-1">Code</label>
                 <input
+                  id="coupon-code"
+                  name="code"
                   type="text"
                   value={couponForm.code || ''}
                   onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
@@ -819,8 +821,10 @@ export default function AdminPanel() {
 
               {/* Coins */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Coins to Give</label>
+                <label htmlFor="coupon-coins" className="block text-sm font-medium text-slate-300 mb-1">Coins to Give</label>
                 <input
+                  id="coupon-coins"
+                  name="coinReward"
                   type="number"
                   value={couponForm.coin_reward || ''}
                   onChange={(e) => setCouponForm({ ...couponForm, coin_reward: e.target.value })}
@@ -834,8 +838,10 @@ export default function AdminPanel() {
               {/* Use limits */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Total Use Limit</label>
+                  <label htmlFor="coupon-max-uses" className="block text-sm font-medium text-slate-300 mb-1">Total Use Limit</label>
                   <input
+                    id="coupon-max-uses"
+                    name="maxUses"
                     type="number"
                     value={couponForm.max_uses || ''}
                     onChange={(e) => setCouponForm({ ...couponForm, max_uses: e.target.value })}
@@ -846,8 +852,10 @@ export default function AdminPanel() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Per-User Limit</label>
+                  <label htmlFor="coupon-per-user" className="block text-sm font-medium text-slate-300 mb-1">Per-User Limit</label>
                   <input
+                    id="coupon-per-user"
+                    name="perUserLimit"
                     type="number"
                     value={couponForm.per_user_limit || 1}
                     onChange={(e) => setCouponForm({ ...couponForm, per_user_limit: e.target.value })}
@@ -861,8 +869,10 @@ export default function AdminPanel() {
 
               {/* Expiry */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Expiry Date &amp; Time</label>
+                <label htmlFor="coupon-expires" className="block text-sm font-medium text-slate-300 mb-1">Expiry Date &amp; Time</label>
                 <input
+                  id="coupon-expires"
+                  name="expiresAt"
                   type="datetime-local"
                   value={couponForm.expires_at || ''}
                   onChange={(e) => setCouponForm({ ...couponForm, expires_at: e.target.value })}
@@ -929,10 +939,12 @@ export default function AdminPanel() {
             <form onSubmit={handleSavePlan} className="space-y-4">
               {/* Plan Name */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label htmlFor="plan-name" className="block text-sm font-medium text-slate-300 mb-2">
                   Plan Name
                 </label>
                 <input
+                  id="plan-name"
+                  name="planName"
                   type="text"
                   value={planForm.name || ''}
                   onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
@@ -972,10 +984,12 @@ export default function AdminPanel() {
               {/* Resources Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label htmlFor="plan-ram" className="block text-sm font-medium text-slate-300 mb-2">
                     RAM (GB)
                   </label>
                   <input
+                    id="plan-ram"
+                    name="ram"
                     type="number"
                     value={planForm.ram || ''}
                     onChange={(e) => setPlanForm({ ...planForm, ram: e.target.value })}
@@ -986,10 +1000,12 @@ export default function AdminPanel() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label htmlFor="plan-cpu" className="block text-sm font-medium text-slate-300 mb-2">
                     CPU Cores
                   </label>
                   <input
+                    id="plan-cpu"
+                    name="cpu"
                     type="number"
                     value={planForm.cpu || ''}
                     onChange={(e) => setPlanForm({ ...planForm, cpu: e.target.value })}
@@ -1000,10 +1016,12 @@ export default function AdminPanel() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label htmlFor="plan-storage" className="block text-sm font-medium text-slate-300 mb-2">
                     Storage (GB)
                   </label>
                   <input
+                    id="plan-storage"
+                    name="storage"
                     type="number"
                     value={planForm.storage || ''}
                     onChange={(e) => setPlanForm({ ...planForm, storage: e.target.value })}
@@ -1017,10 +1035,12 @@ export default function AdminPanel() {
 
               {/* Pricing */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label htmlFor="plan-price" className="block text-sm font-medium text-slate-300 mb-2">
                   {planModal.type === 'coin' ? 'Coin Price' : 'Price (₹)'}
                 </label>
                 <input
+                  id="plan-price"
+                  name="price"
                   type="number"
                   value={planForm[planModal.type === 'coin' ? 'coin_price' : 'price'] || ''}
                   onChange={(e) =>
@@ -1040,10 +1060,12 @@ export default function AdminPanel() {
               {/* Duration */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label htmlFor="plan-duration-type" className="block text-sm font-medium text-slate-300 mb-2">
                     Duration Type
                   </label>
                   <select
+                    id="plan-duration-type"
+                    name="durationType"
                     value={planForm.duration_type || 'days'}
                     onChange={(e) => setPlanForm({ ...planForm, duration_type: e.target.value })}
                     className="w-full px-4 py-2 rounded-lg border border-slate-700/50 bg-ink-950/60 text-slate-200 focus:outline-none focus:border-aurora-500/50"
@@ -1053,10 +1075,12 @@ export default function AdminPanel() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label htmlFor="plan-duration-days" className="block text-sm font-medium text-slate-300 mb-2">
                     Duration (Days)
                   </label>
                   <input
+                    id="plan-duration-days"
+                    name="durationDays"
                     type="number"
                     value={planForm.duration_days || ''}
                     onChange={(e) => setPlanForm({ ...planForm, duration_days: e.target.value })}

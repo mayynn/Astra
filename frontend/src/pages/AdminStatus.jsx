@@ -108,8 +108,10 @@ export default function AdminStatus() {
 
       {/* Global message */}
       <div className="glass rounded-2xl border border-slate-700/40 p-5 space-y-3">
-        <label className="text-xs uppercase tracking-widest text-slate-500">Global Status Message (optional)</label>
+        <label htmlFor="global-status-message" className="text-xs uppercase tracking-widest text-slate-500">Global Status Message (optional)</label>
         <textarea
+          id="global-status-message"
+          name="globalStatusMessage"
           className="input w-full resize-none"
           rows={2}
           value={globalMessage}

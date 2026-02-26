@@ -76,10 +76,12 @@ export default function NewTicket() {
 
           {/* Category */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
+            <label htmlFor="ticket-category" className="block text-sm font-medium text-slate-300 mb-2">
               Category *
             </label>
             <select
+              id="ticket-category"
+              name="category"
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               required
@@ -94,10 +96,12 @@ export default function NewTicket() {
 
           {/* Priority */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
+            <label htmlFor="ticket-priority" className="block text-sm font-medium text-slate-300 mb-2">
               Priority *
             </label>
             <select
+              id="ticket-priority"
+              name="priority"
               value={formData.priority}
               onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
               required
@@ -111,10 +115,12 @@ export default function NewTicket() {
 
           {/* Subject */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
+            <label htmlFor="ticket-subject" className="block text-sm font-medium text-slate-300 mb-2">
               Subject *
             </label>
             <input
+              id="ticket-subject"
+              name="subject"
               type="text"
               value={formData.subject}
               onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
@@ -131,10 +137,12 @@ export default function NewTicket() {
 
           {/* Message */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
+            <label htmlFor="ticket-message" className="block text-sm font-medium text-slate-300 mb-2">
               Message *
             </label>
             <textarea
+              id="ticket-message"
+              name="message"
               value={formData.message}
               onChange={(e) => setFormData({ ...formData, message: e.target.value })}
               placeholder="Provide detailed information about your issue..."

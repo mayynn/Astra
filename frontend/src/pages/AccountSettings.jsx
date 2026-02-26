@@ -66,9 +66,12 @@ function ResetPasswordModal({ open, onClose }) {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-xs text-slate-500 uppercase tracking-wider">Current Password</label>
+            <label htmlFor="current-password" className="text-xs text-slate-500 uppercase tracking-wider">Current Password</label>
             <input
+              id="current-password"
+              name="currentPassword"
               type="password"
+              autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               required
@@ -77,9 +80,12 @@ function ResetPasswordModal({ open, onClose }) {
             />
           </div>
           <div>
-            <label className="text-xs text-slate-500 uppercase tracking-wider">New Password</label>
+            <label htmlFor="new-password" className="text-xs text-slate-500 uppercase tracking-wider">New Password</label>
             <input
+              id="new-password"
+              name="newPassword"
               type="password"
+              autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
@@ -89,9 +95,12 @@ function ResetPasswordModal({ open, onClose }) {
             />
           </div>
           <div>
-            <label className="text-xs text-slate-500 uppercase tracking-wider">Confirm New Password</label>
+            <label htmlFor="confirm-new-password" className="text-xs text-slate-500 uppercase tracking-wider">Confirm New Password</label>
             <input
+              id="confirm-new-password"
+              name="confirmNewPassword"
               type="password"
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required

@@ -40,9 +40,12 @@ export default function Login() {
           </div>
         )}
         <div>
-          <label className="text-xs uppercase tracking-[0.3em] text-slate-500">Email</label>
+          <label htmlFor="login-email" className="text-xs uppercase tracking-[0.3em] text-slate-500">Email</label>
           <input
+            id="login-email"
+            name="email"
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -51,9 +54,12 @@ export default function Login() {
           />
         </div>
         <div>
-          <label className="text-xs uppercase tracking-[0.3em] text-slate-500">Password</label>
+          <label htmlFor="login-password" className="text-xs uppercase tracking-[0.3em] text-slate-500">Password</label>
           <input
+            id="login-password"
+            name="password"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

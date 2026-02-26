@@ -233,6 +233,8 @@ export default function TicketDetail() {
             )}
             
             <textarea
+              id="reply-message"
+              name="replyMessage"
               value={replyMessage}
               onChange={(e) => setReplyMessage(e.target.value)}
               placeholder="Type your message..."

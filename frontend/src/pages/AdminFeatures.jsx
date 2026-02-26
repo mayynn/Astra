@@ -116,8 +116,10 @@ export default function AdminFeatures() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs uppercase tracking-widest text-slate-500">Title</label>
+                <label htmlFor={`feat-${idx}-title`} className="text-xs uppercase tracking-widest text-slate-500">Title</label>
                 <input
+                  id={`feat-${idx}-title`}
+                  name={`feat-${idx}-title`}
                   className="input mt-1 w-full"
                   value={feat.title}
                   onChange={(e) => update(idx, "title", e.target.value)}
@@ -125,8 +127,10 @@ export default function AdminFeatures() {
                 />
               </div>
               <div>
-                <label className="text-xs uppercase tracking-widest text-slate-500">Icon</label>
+                <label htmlFor={`feat-${idx}-icon`} className="text-xs uppercase tracking-widest text-slate-500">Icon</label>
                 <select
+                  id={`feat-${idx}-icon`}
+                  name={`feat-${idx}-icon`}
                   className="input mt-1 w-full"
                   value={feat.icon}
                   onChange={(e) => update(idx, "icon", e.target.value)}
@@ -140,8 +144,10 @@ export default function AdminFeatures() {
 
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-2">
-                <label className="text-xs uppercase tracking-widest text-slate-500">Description</label>
+                <label htmlFor={`feat-${idx}-description`} className="text-xs uppercase tracking-widest text-slate-500">Description</label>
                 <textarea
+                  id={`feat-${idx}-description`}
+                  name={`feat-${idx}-description`}
                   className="input mt-1 w-full resize-none"
                   rows={2}
                   value={feat.description}
@@ -150,8 +156,10 @@ export default function AdminFeatures() {
                 />
               </div>
               <div>
-                <label className="text-xs uppercase tracking-widest text-slate-500">Icon Color</label>
+                <label htmlFor={`feat-${idx}-color`} className="text-xs uppercase tracking-widest text-slate-500">Icon Color</label>
                 <select
+                  id={`feat-${idx}-color`}
+                  name={`feat-${idx}-color`}
                   className="input mt-1 w-full"
                   value={feat.color}
                   onChange={(e) => update(idx, "color", e.target.value)}
