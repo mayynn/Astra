@@ -1,36 +1,34 @@
-import sqlite3 from "sqlite3"
 import { resolve } from "path"
 import { readFileSync } from "fs"
 import { fileURLToPath } from "url"
 import { dirname } from "path"
-
-const { Database } = sqlite3
+import { getDb } from "../src/config/db.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-const dbPath = resolve(__dirname, "../data/astranodes.sqlite")
 const schemaPath = resolve(__dirname, "../src/db/tickets.sql")
 
 console.log("[MIGRATE] Running ticket schema migration...")
-console.log("[MIGRATE] Database:", dbPath)
 console.log("[MIGRATE] Schema:", schemaPath)
 
-const db = new Database(dbPath, (err) => {
-  if (err) {
-    console.error("[MIGRATE] ✗ Failed to connect to database:", err.message)
-    process.exit(1)
+try {
+  const db = getDb()
+  const schema = readFileSync(schemaPath, "utf8")
+  
+  // Split and execute SQL statements
+  const statements = schema
+    .split(";")
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+  
+  for (const stmt of statements) {
+    db.prepare(stmt).run()
   }
-})
-
-const schema = readFileSync(schemaPath, "utf8")
-
-db.exec(schema, (err) => {
-  if (err) {
-    console.error("[MIGRATE] ✗ Migration failed:", err.message)
-    process.exit(1)
-  }
+  
   console.log("[MIGRATE] ✓ Ticket tables created successfully")
-  db.close()
   process.exit(0)
-})
+} catch (err) {
+  console.error("[MIGRATE] ✗ Migration failed:", err.message)
+  process.exit(1)
+}
