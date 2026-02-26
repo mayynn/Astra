@@ -2,7 +2,7 @@ import { resolve } from "path"
 import { readFileSync } from "fs"
 import { fileURLToPath } from "url"
 import { dirname } from "path"
-import { getDb } from "../src/config/db.js"
+import { db } from "../src/config/db.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -13,7 +13,6 @@ console.log("[UPGRADE] Running ticket system upgrade migration...")
 console.log("[UPGRADE] Schema:", schemaPath)
 
 try {
-  const db = getDb()
   const schema = readFileSync(schemaPath, "utf8")
   
   // Split and execute SQL statements
