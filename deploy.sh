@@ -268,7 +268,7 @@ wait_apt() {
 wait_apt
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
-apt-get install -y -q curl git nginx certbot python3-certbot-nginx ufw
+apt-get install -y -q curl git nginx certbot python3-certbot-nginx ufw build-essential python3-dev
 
 # Node.js LTS via NodeSource
 if ! command -v node &>/dev/null; then

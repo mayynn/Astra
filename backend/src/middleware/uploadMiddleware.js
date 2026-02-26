@@ -41,12 +41,12 @@ const fileFilter = (req, file, cb) => {
   const originalExt = extname(file.originalname || "").toLowerCase()
 
   if (!ALLOWED_MIMETYPES.has(mimetype)) {
-    return cb(new Error("Invalid file type. Only JPEG, PNG, and WebP images are allowed."), false)
+    return cb(new Error("Invalid file type. Only JPEG, PNG, and WebP images are allowed."))
   }
 
   // Reject if extension doesn't match an image type (catches renamed executables)
   if (originalExt && !ALLOWED_EXTENSIONS.has(originalExt)) {
-    return cb(new Error("File extension not allowed."), false)
+    return cb(new Error("File extension not allowed."))
   }
 
   cb(null, true)
