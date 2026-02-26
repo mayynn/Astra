@@ -11,8 +11,8 @@ const router = Router()
 
 router.get("/payment", (req, res) => {
   return ok(res, "Payment settings loaded", {
-    upiId: env.UPI_ID || null,
-    upiName: env.UPI_NAME || null
+    upiId: env.UPI_ID && env.UPI_ID.trim() !== "" ? env.UPI_ID : null,
+    upiName: env.UPI_NAME && env.UPI_NAME.trim() !== "" ? env.UPI_NAME : null
   })
 })
 
