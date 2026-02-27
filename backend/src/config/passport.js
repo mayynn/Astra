@@ -37,8 +37,11 @@ if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
         try {
           const email = profile.emails?.[0]?.value?.toLowerCase();
           if (!email) {
+            console.error('[AUTH] Google OAuth: No email provided');
             return done(new Error('No email provided by Google'), null);
           }
+
+          console.log('[AUTH] Google OAuth login attempt:', email);
 
           // Check if user exists
           let user = await getOne(
@@ -47,6 +50,7 @@ if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
           );
 
           if (user) {
+            console.log('[AUTH] Existing user found:', { id: user.id, email: user.email, role: user.role });
             // Update OAuth info if not set
             if (!user.oauth_provider || !user.oauth_id) {
               await runSync(
@@ -79,15 +83,26 @@ if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
               return done(new Error('Account provisioning failed'), null);
             }
 
+            console.log('[AUTH] Creating new user in database:', { email, oauth_provider: 'google', pteroId });
+            
             const info = await runSync(
               'INSERT INTO users (email, oauth_provider, oauth_id, pterodactyl_user_id, ip_address, email_verified) VALUES (?, ?, ?, ?, ?, ?)',
               [email, 'google', profile.id, pteroId, '0.0.0.0', 1]
             );
 
+            console.log('[AUTH] User created with ID:', info.lastID);
+
             user = await getOne(
-              'SELECT id, email, role, coins, balance FROM users WHERE id = ?',
+              'SELECT id, email, role, coins, balance, oauth_provider, oauth_id FROM users WHERE id = ?',
               [info.lastID]
             );
+            
+            if (!user) {
+              console.error('[AUTH] Failed to retrieve newly created user!');
+              return done(new Error('User creation failed'), null);
+            }
+            
+            console.log('[AUTH] New user retrieved:', { id: user.id, email: user.email, role: user.role });
           }
 
           return done(null, user);
@@ -114,8 +129,11 @@ if (env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET) {
         try {
           const email = profile.email?.toLowerCase();
           if (!email) {
+            console.error('[AUTH] Discord OAuth: No email provided');
             return done(new Error('No email provided by Discord'), null);
           }
+
+          console.log('[AUTH] Discord OAuth login attempt:', email);
 
           // Check if user exists
           let user = await getOne(
@@ -124,6 +142,7 @@ if (env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET) {
           );
 
           if (user) {
+            console.log('[AUTH] Existing user found:', { id: user.id, email: user.email, role: user.role });
             // Update OAuth info if not set
             if (!user.oauth_provider || !user.oauth_id) {
               await runSync(
@@ -156,15 +175,26 @@ if (env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET) {
               return done(new Error('Account provisioning failed'), null);
             }
 
+            console.log('[AUTH] Creating new user in database:', { email, oauth_provider: 'discord', pteroId });
+
             const info = await runSync(
               'INSERT INTO users (email, oauth_provider, oauth_id, pterodactyl_user_id, ip_address, email_verified) VALUES (?, ?, ?, ?, ?, ?)',
               [email, 'discord', profile.id, pteroId, '0.0.0.0', 1]
             );
 
+            console.log('[AUTH] User created with ID:', info.lastID);
+
             user = await getOne(
-              'SELECT id, email, role, coins, balance FROM users WHERE id = ?',
+              'SELECT id, email, role, coins, balance, oauth_provider, oauth_id FROM users WHERE id = ?',
               [info.lastID]
             );
+            
+            if (!user) {
+              console.error('[AUTH] Failed to retrieve newly created user!');
+              return done(new Error('User creation failed'), null);
+            }
+            
+            console.log('[AUTH] New user retrieved:', { id: user.id, email: user.email, role: user.role });
           }
 
           return done(null, user);

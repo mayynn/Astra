@@ -206,6 +206,53 @@ export const pterodactyl = {
     }
   },
 
+  async getServerDetails(serverId) {
+    try {
+      console.log("[PTERODACTYL] Fetching server details:", serverId)
+      
+      const response = await client.get(`/servers/${serverId}`, {
+        params: { include: 'allocations' }
+      })
+      
+      const server = response.data.attributes
+      const allocations = response.data.attributes.relationships?.allocations?.data || []
+      
+      // Get primary allocation (IP and port)
+      const primaryAllocation = allocations.find(a => a.attributes.is_default) || allocations[0]
+      
+      const details = {
+        id: server.id,
+        uuid: server.uuid,
+        identifier: server.identifier,
+        name: server.name,
+        status: server.status,
+        ip: primaryAllocation?.attributes.ip,
+        port: primaryAllocation?.attributes.port,
+        allocations: allocations.map(a => ({
+          ip: a.attributes.ip,
+          port: a.attributes.port,
+          isDefault: a.attributes.is_default
+        }))
+      }
+      
+      console.log("[PTERODACTYL] ✓ Server details retrieved:", {
+        id: details.id,
+        identifier: details.identifier,
+        ip: details.ip,
+        port: details.port
+      })
+      
+      return details
+    } catch (error) {
+      if (error.response?.status === 404) {
+        console.log("[PTERODACTYL] Server not found:", serverId)
+        return null
+      }
+      console.error("[PTERODACTYL] ✗ Failed to fetch server details:", error.message)
+      return null
+    }
+  },
+
   async getAvailableEggs() {
     try {
       console.log("[PTERODACTYL] Fetching available eggs...")

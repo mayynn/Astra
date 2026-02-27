@@ -15,6 +15,7 @@
     "migrate-oauth": "node scripts/migrateOAuthAndPlans.js",
     "create-admin": "echo '⚠️  DEPRECATED: Use set-admin instead (OAuth-only auth)' && node scripts/createAdmin.js",
     "set-admin": "node scripts/setAdmin.js",
+    "check-oauth": "node scripts/checkOAuthSetup.js",
     "test-pterodactyl": "node scripts/testPterodactyl.js"
   },
   "dependencies": {

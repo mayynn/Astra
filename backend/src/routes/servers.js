@@ -62,12 +62,27 @@ router.get("/", requireAuth, async (req, res, next) => {
       servers.map(async (server) => {
         const plan = await getPlan(server.plan_type, server.plan_id)
         const renewalCost = plan ? getPrice(server.plan_type, plan) : 0
+        
+        // Fetch server details from Pterodactyl to get IP and port
+        let pteroDetails = null
+        if (server.pterodactyl_server_id) {
+          try {
+            pteroDetails = await pterodactyl.getServerDetails(server.pterodactyl_server_id)
+          } catch (err) {
+            console.error(`[SERVERS] Failed to fetch Pterodactyl details for server ${server.id}:`, err.message)
+          }
+        }
+        
         return {
           ...server,
           plan: plan?.name || "Unknown Plan",
           // Add renewal cost fields for the frontend
           coin_cost: server.plan_type === "coin" ? renewalCost : undefined,
-          real_cost: server.plan_type === "real" ? renewalCost : undefined
+          real_cost: server.plan_type === "real" ? renewalCost : undefined,
+          // Add connection details from Pterodactyl
+          ip: pteroDetails?.ip,
+          port: pteroDetails?.port,
+          server_identifier: pteroDetails?.identifier || server.identifier
         }
       })
     )
