@@ -59,9 +59,13 @@ router.get("/", requireAuth, async (req, res, next) => {
     const enriched = await Promise.all(
       servers.map(async (server) => {
         const plan = await getPlan(server.plan_type, server.plan_id)
+        const renewalCost = plan ? getPrice(server.plan_type, plan) : 0
         return {
           ...server,
-          plan: plan?.name || "Unknown Plan"
+          plan: plan?.name || "Unknown Plan",
+          // Add renewal cost fields for the frontend
+          coin_cost: server.plan_type === "coin" ? renewalCost : undefined,
+          real_cost: server.plan_type === "real" ? renewalCost : undefined
         }
       })
     )

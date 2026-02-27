@@ -1,18 +1,16 @@
-export default function StatCard({ label, value, hint, accent = "neon" }) {
-  const accents = {
-    neon: "from-neon-500/30 via-neon-500/10 to-transparent",
-    aurora: "from-aurora-500/30 via-aurora-500/10 to-transparent",
-    ember: "from-ember-500/30 via-ember-500/10 to-transparent"
-  }
-
+export default function StatCard({ label, value, hint, icon: Icon }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-700/40 bg-ink-900/70 p-6 shadow-soft">
-      <div className={`absolute inset-0 bg-gradient-to-br ${accents[accent]} opacity-70`} />
-      <div className="relative">
-        <p className="text-xs uppercase tracking-[0.3em] text-slate-500">{label}</p>
-        <p className="mt-3 text-3xl font-semibold text-slate-100">{value}</p>
-        {hint ? <p className="mt-3 text-sm text-slate-400">{hint}</p> : null}
+    <div className="rounded-xl border border-white/10 bg-dark-800 p-6">
+      <div className="flex items-center gap-3 mb-4">
+        {Icon && (
+          <div className="h-10 w-10 rounded-lg bg-primary-500/10 flex items-center justify-center">
+            <Icon className="h-5 w-5 text-primary-400" />
+          </div>
+        )}
+        <p className="text-sm text-slate-400">{label}</p>
       </div>
+      <p className="text-3xl font-semibold text-white">{value}</p>
+      {hint && <p className="mt-2 text-sm text-slate-400">{hint}</p>}
     </div>
   )
 }

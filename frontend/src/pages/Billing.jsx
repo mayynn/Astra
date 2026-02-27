@@ -88,40 +88,43 @@ export default function Billing() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="Add Balance" subtitle="Pay via UPI, then submit your UTR number and screenshot for verification." />
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold text-slate-100">Add funds</h1>
+        <p className="text-sm text-slate-400">Pay via UPI, then submit your UTR number and screenshot for verification.</p>
+      </div>
 
       {/* Step 1 — UPI Payment Details */}
-      <div className="rounded-2xl border border-aurora-500/30 bg-aurora-900/10 p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-aurora-400 mb-4">Step 1 — Send Payment via UPI</p>
+      <div className="rounded-2xl border border-primary-500/30 bg-primary-900/10 p-6">
+        <p className="text-sm font-semibold text-primary-400 mb-4">Step 1: Send payment via UPI</p>
 
         {upiSettings.upiId ? (
           <div className="space-y-4">
             {upiSettings.upiName && (
               <div>
-                <p className="text-xs text-slate-500 mb-1">Pay to</p>
+                <p className="text-xs text-slate-400 mb-1">Pay to</p>
                 <p className="text-lg font-semibold text-slate-100">{upiSettings.upiName}</p>
               </div>
             )}
             <div>
-              <p className="text-xs text-slate-500 mb-2">UPI ID</p>
+              <p className="text-xs text-slate-400 mb-2">UPI ID</p>
               <div className="flex items-center gap-3">
-                <div className="flex-1 rounded-xl border border-aurora-500/40 bg-ink-950/60 px-4 py-3">
-                  <p className="font-mono text-lg font-semibold text-aurora-200 select-all">{upiSettings.upiId}</p>
+                <div className="flex-1 rounded-xl border border-primary-500/40 bg-dark-950 px-4 py-3">
+                  <p className="font-mono text-lg font-semibold text-primary-200 select-all">{upiSettings.upiId}</p>
                 </div>
                 <button
                   onClick={copyUpi}
-                  className="flex items-center gap-2 rounded-xl border border-aurora-500/30 bg-aurora-900/20 px-4 py-3 text-sm font-semibold text-aurora-200 hover:bg-aurora-900/40 transition-all"
+                  className="flex items-center gap-2 rounded-xl border border-primary-500/30 bg-primary-900/20 px-4 py-3 text-sm font-semibold text-primary-200 hover:bg-primary-900/40 transition-all"
                 >
                   {copied ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
                   {copied ? "Copied!" : "Copy"}
                 </button>
               </div>
             </div>
-            <div className="rounded-xl border border-slate-700/40 bg-ink-950/40 px-4 py-3 text-sm text-slate-400">
+            <div className="rounded-xl border border-dark-700 bg-dark-950 px-4 py-3 text-sm text-slate-300">
               <p>1. Open any UPI app (GPay, PhonePe, Paytm, etc.)</p>
               <p className="mt-1">2. Send the exact amount you want to add to your balance</p>
-              <p className="mt-1">3. Note the <span className="text-aurora-300 font-semibold">UTR / Reference number</span> from the payment receipt</p>
-              <p className="mt-1">4. Take a <span className="text-aurora-300 font-semibold">screenshot</span> of the payment confirmation</p>
+              <p className="mt-1">3. Note the <span className="text-primary-300 font-semibold">UTR / Reference number</span> from the payment receipt</p>
+              <p className="mt-1">4. Take a <span className="text-primary-300 font-semibold">screenshot</span> of the payment confirmation</p>
             </div>
           </div>
         ) : (
@@ -133,8 +136,8 @@ export default function Billing() {
 
       {/* Step 2 — Submit UTR */}
       <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
-        <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 mb-5">Step 2 — Submit Your Payment Proof</p>
+        <div className="rounded-2xl border border-dark-700 bg-dark-900 p-6">
+          <p className="text-sm font-semibold text-slate-300 mb-5">Step 2: Submit your payment proof</p>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="rounded-lg bg-red-900/20 border border-red-700/30 p-3 text-sm text-red-300">
@@ -142,9 +145,9 @@ export default function Billing() {
               </div>
             )}
             <div>
-              <label htmlFor="billing-amount" className="text-xs uppercase tracking-[0.3em] text-slate-500">Amount Paid (₹)</label>
+              <label htmlFor="billing-amount" className="text-sm text-slate-300 font-medium">Amount paid (₹)</label>
               <div className="relative mt-2">
-                <IndianRupee size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <IndianRupee size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   id="billing-amount"
                   name="amount"
@@ -154,13 +157,13 @@ export default function Billing() {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   required
-                  className="w-full rounded-xl border border-slate-700/60 bg-ink-900/70 pl-9 pr-4 py-3 text-sm text-slate-100 placeholder-slate-600 focus:border-aurora-500/50 focus:outline-none"
+                  className="w-full rounded-xl border border-dark-700 bg-dark-800 pl-9 pr-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:border-primary-500 focus:outline-none"
                   placeholder="25.00"
                 />
               </div>
             </div>
             <div>
-              <label htmlFor="billing-utr" className="text-xs uppercase tracking-[0.3em] text-slate-500">UTR / Reference Number</label>
+              <label htmlFor="billing-utr" className="text-sm text-slate-300 font-medium">UTR / Reference number</label>
               <input
                 id="billing-utr"
                 name="utrNumber"
@@ -168,20 +171,20 @@ export default function Billing() {
                 value={utrNumber}
                 onChange={(e) => setUtrNumber(e.target.value)}
                 required
-                className="mt-2 w-full rounded-xl border border-slate-700/60 bg-ink-900/70 px-4 py-3 text-sm text-slate-100 placeholder-slate-600 focus:border-aurora-500/50 focus:outline-none"
+                className="mt-2 w-full rounded-xl border border-dark-700 bg-dark-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:border-primary-500 focus:outline-none"
                 placeholder="UTR000000000000"
               />
-              <p className="mt-1 text-xs text-slate-500">Found in your UPI app transaction history</p>
+              <p className="mt-1 text-xs text-slate-400">Found in your UPI app transaction history</p>
             </div>
             <div>
-              <label htmlFor="billing-screenshot" className="text-xs uppercase tracking-[0.3em] text-slate-500">Payment Screenshot</label>
+              <label htmlFor="billing-screenshot" className="text-sm text-slate-300 font-medium">Payment screenshot</label>
               <div
                 onClick={() => fileRef.current?.click()}
-                className="mt-2 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-700/60 bg-ink-900/40 px-4 py-6 text-sm text-slate-400 hover:border-aurora-500/40 hover:text-aurora-300 transition-colors"
+                className="mt-2 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-dark-700 bg-dark-950 px-4 py-6 text-sm text-slate-400 hover:border-primary-500/40 hover:text-primary-300 transition-colors"
               >
                 <Upload size={20} />
                 {screenshot ? (
-                  <span className="text-aurora-300 font-medium">{screenshot.name}</span>
+                  <span className="text-primary-300 font-medium">{screenshot.name}</span>
                 ) : (
                   <span>Click to attach screenshot</span>
                 )}
@@ -200,30 +203,30 @@ export default function Billing() {
             <button
               type="submit"
               disabled={submitting}
-              className="button-3d w-full rounded-xl bg-aurora-500/20 px-4 py-3 text-sm font-semibold text-aurora-200 hover:bg-aurora-500/30 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full rounded-xl bg-primary-500 px-4 py-3 text-sm font-semibold text-white hover:bg-primary-600 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
             >
-              {submitting ? "Submitting..." : "Submit for Review"}
+              {submitting ? "Submitting..." : "Submit for review"}
             </button>
           </form>
         </div>
 
         {/* Submission history */}
-        <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
+        <div className="rounded-2xl border border-dark-700 bg-dark-900 p-6">
           <div className="flex items-center gap-2 mb-4">
-            <Clock size={14} className="text-slate-500" />
-            <p className="text-sm text-slate-400">Recent Submissions</p>
+            <Clock size={14} className="text-slate-400" />
+            <p className="text-sm text-slate-300">Recent submissions</p>
           </div>
           {submissions.length > 0 ? (
             <div className="space-y-3 text-sm">
               {submissions.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-slate-800/60 bg-ink-950/60 px-4 py-3"
+                  className="rounded-xl border border-dark-700 bg-dark-950 px-4 py-3"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-semibold text-slate-100">₹{Number(item.amount).toFixed(2)}</p>
-                      <p className="text-xs text-slate-500 mt-0.5 font-mono">{item.utr_number}</p>
+                      <p className="text-xs text-slate-400 mt-0.5 font-mono">{item.utr_number}</p>
                     </div>
                     <Badge
                       label={item.status.charAt(0).toUpperCase() + item.status.slice(1)}
@@ -234,14 +237,14 @@ export default function Billing() {
                       }
                     />
                   </div>
-                  <p className="mt-2 text-xs text-slate-600">
+                  <p className="mt-2 text-xs text-slate-500">
                     {new Date(item.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-slate-500 text-center py-8">No submissions yet</p>
+            <p className="text-sm text-slate-400 text-center py-8">No submissions yet</p>
           )}
         </div>
       </div>

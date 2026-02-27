@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import AdminNav from "../components/AdminNav.jsx"
 import SectionHeader from "../components/SectionHeader.jsx"
 import Badge from "../components/Badge.jsx"
 import ConfirmModal from "../components/ConfirmModal.jsx"
@@ -435,19 +436,12 @@ export default function AdminPanel() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="min-h-screen bg-dark-950">
+      <AdminNav />
+      <div className="max-w-7xl mx-auto p-6 space-y-8">
       <SectionHeader
-        title="Admin Panel"
-        subtitle="Monitor users, plans, coupons, and server lifecycle events."
-        action={
-          <button
-            onClick={() => navigate("/admin/tickets")}
-            className="button-3d rounded-xl bg-aurora-500/20 border border-aurora-500/30 px-4 py-2 text-sm font-semibold text-aurora-200 hover:bg-aurora-500/30"
-          >
-            Manage Tickets
-          </button>
-        }
-      />
+        title="Admin Overview"
+        subtitle="Monitor users, plans, coupons, and server lifecycle." />
 
       {error && (
         <div className="rounded-lg bg-red-900/20 border border-red-700/30 p-3 text-sm text-red-300">
@@ -1197,6 +1191,7 @@ export default function AdminPanel() {
         onConfirm={confirmModal.onConfirm}
         onClose={closeConfirm}
       />
+      </div>
     </div>
   )
 }

@@ -78,7 +78,20 @@ app.use(helmet({
       upgradeInsecureRequests: []
     }
   },
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  hsts: {
+    maxAge: 31536000,  // 1 year
+    includeSubDomains: true,
+    preload: true
+  },
+  frameguard: {
+    action: 'sameorigin'
+  },
+  noSniff: true,
+  xssFilter: true,
+  referrerPolicy: {
+    policy: 'strict-origin-when-cross-origin'
+  }
 }))
 app.use(express.json({ limit: "2mb" }))
 app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"))

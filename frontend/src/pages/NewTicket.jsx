@@ -1,6 +1,5 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import SectionHeader from "../components/SectionHeader.jsx"
 import { api } from "../services/api.js"
 
 export default function NewTicket() {
@@ -61,12 +60,12 @@ export default function NewTicket() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        title="New Support Ticket"
-        subtitle="Describe your issue and our team will assist you"
-      />
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold text-slate-100">Create support ticket</h1>
+        <p className="text-sm text-slate-400">Describe your issue and our team will assist you</p>
+      </div>
 
-      <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
+      <div className="rounded-xl border border-dark-700 bg-dark-900 p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="rounded-lg bg-red-900/20 border border-red-700/30 p-3 text-sm text-red-300">
@@ -85,7 +84,7 @@ export default function NewTicket() {
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               required
-              className="w-full px-4 py-3 rounded-lg border border-slate-700/60 bg-ink-950/60 text-slate-200 focus:outline-none focus:border-aurora-500/50"
+              className="w-full px-4 py-3 rounded-lg border border-dark-700 bg-dark-800 text-slate-200 focus:outline-none focus:border-primary-500"
             >
               <option value="Billing">Billing</option>
               <option value="Server Issue">Server Issue</option>
@@ -105,7 +104,7 @@ export default function NewTicket() {
               value={formData.priority}
               onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
               required
-              className="w-full px-4 py-3 rounded-lg border border-slate-700/60 bg-ink-950/60 text-slate-200 focus:outline-none focus:border-aurora-500/50"
+              className="w-full px-4 py-3 rounded-lg border border-dark-700 bg-dark-800 text-slate-200 focus:outline-none focus:border-primary-500"
             >
               <option value="Low">Low - General question or minor issue</option>
               <option value="Medium">Medium - Affects functionality</option>
@@ -128,7 +127,7 @@ export default function NewTicket() {
               required
               minLength={5}
               maxLength={200}
-              className="w-full px-4 py-3 rounded-lg border border-slate-700/60 bg-ink-950/60 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-aurora-500/50"
+              className="w-full px-4 py-3 rounded-lg border border-dark-700 bg-dark-800 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-primary-500"
             />
             <p className="mt-1 text-xs text-slate-500">
               {formData.subject.length}/200 characters
@@ -150,7 +149,7 @@ export default function NewTicket() {
               minLength={10}
               maxLength={2000}
               rows={8}
-              className="w-full px-4 py-3 rounded-lg border border-slate-700/60 bg-ink-950/60 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-aurora-500/50 resize-none"
+              className="w-full px-4 py-3 rounded-lg border border-dark-700 bg-dark-800 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-primary-500 resize-none"
             />
             <p className="mt-1 text-xs text-slate-500">
               {formData.message.length}/2000 characters
@@ -160,7 +159,7 @@ export default function NewTicket() {
           {/* Image Upload */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">
-              Attach Screenshot (Optional)
+              Attach screenshot (optional)
             </label>
             {!imagePreview ? (
               <div className="relative">
@@ -173,7 +172,7 @@ export default function NewTicket() {
                 />
                 <label
                   htmlFor="ticket-image"
-                  className="flex flex-col items-center justify-center w-full px-4 py-6 border-2 border-dashed border-slate-700/60 rounded-lg cursor-pointer hover:border-aurora-500/50 transition-colors"
+                  className="flex flex-col items-center justify-center w-full px-4 py-6 border-2 border-dashed border-dark-700 rounded-lg cursor-pointer hover:border-primary-500/50 transition-colors"
                 >
                   <svg className="w-10 h-10 text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -183,7 +182,7 @@ export default function NewTicket() {
                 </label>
               </div>
             ) : (
-              <div className="relative rounded-lg border border-slate-700/60 p-4">
+              <div className="relative rounded-lg border border-dark-700 p-4">
                 <img src={imagePreview} alt="Preview" className="max-h-64 rounded-lg mx-auto" />
                 <button
                   type="button"
@@ -203,16 +202,16 @@ export default function NewTicket() {
             <button
               type="button"
               onClick={() => navigate("/support")}
-              className="flex-1 button-3d rounded-lg border border-slate-700/60 px-4 py-3 text-sm font-semibold text-slate-300 hover:bg-slate-800/30"
+              className="flex-1 rounded-lg border border-dark-700 px-4 py-3 text-sm font-semibold text-slate-300 hover:bg-dark-800 transition-all"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 button-3d rounded-lg bg-neon-500/20 px-4 py-3 text-sm font-semibold text-neon-200 hover:bg-neon-500/30 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex-1 rounded-lg bg-primary-500 px-4 py-3 text-sm font-semibold text-white hover:bg-primary-600 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
             >
-              {submitting ? "Creating..." : "Create Ticket"}
+              {submitting ? "Creating..." : "Submit ticket"}
             </button>
           </div>
         </form>

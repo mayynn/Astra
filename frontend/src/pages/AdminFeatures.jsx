@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Plus, Trash2, GripVertical, Zap, ShieldCheck, Coins, Server, Globe, Cpu, HardDrive, Clock, Lock, LifeBuoy, Wifi, Shield, Rocket, Gift, Gem, Star, ArrowRight } from "lucide-react"
+import AdminNav from "../components/AdminNav.jsx"
 import SectionHeader from "../components/SectionHeader.jsx"
 import ButtonSpinner from "../components/ButtonSpinner.jsx"
 import { useAppUI } from "../context/AppUIContext.jsx"
@@ -82,7 +83,9 @@ export default function AdminFeatures() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-dark-950">
+      <AdminNav />
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
       <SectionHeader
         title="Features Page"
         subtitle="Edit the feature cards shown on the public /features page."
@@ -188,6 +191,7 @@ export default function AdminFeatures() {
       >
         Save Features Page
       </ButtonSpinner>
+      </div>
     </div>
   )
 }

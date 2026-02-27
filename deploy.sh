@@ -427,8 +427,13 @@ npm --prefix "${APP_DIR}/frontend" install --quiet
 # =============================================================================
 header "Running database migrations"
 
+info "A fresh database will be created automatically if one doesn't exist."
+info "Location: ${DB_PATH}"
+echo ""
+
 # Migration scripts in the order they must be applied.
 # --if-present silently skips any script not defined in package.json.
+# These migrations are idempotent (safe to run multiple times).
 MIGRATE_SCRIPTS=(
   migrate
   migrate-icons

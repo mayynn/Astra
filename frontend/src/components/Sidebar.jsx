@@ -5,12 +5,10 @@ import Logo from "./Logo.jsx"
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/plans", label: "Plans", icon: Package },
-  { to: "/coins", label: "Coins", icon: Coins },
-  { to: "/coupons", label: "Redeem", icon: Ticket },
+  { to: "/servers", label: "Servers", icon: Server },
   { to: "/billing", label: "Billing", icon: CreditCard },
-  { to: "/servers", label: "My Servers", icon: Server },
-  { to: "/support", label: "Support", icon: LifeBuoy },
-  { to: "/settings", label: "Settings", icon: Settings }
+  { to: "/coins", label: "Coins", icon: Coins },
+  { to: "/support", label: "Support", icon: LifeBuoy }
 ]
 
 export default function Sidebar() {
@@ -25,9 +23,9 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="hidden w-72 flex-col gap-8 border-r border-slate-800/60 bg-ink-950/80 px-6 py-8 lg:flex">
+    <aside className="hidden w-64 flex-col gap-6 border-r border-white/10 bg-dark-800 px-5 py-6 lg:flex">
       <Logo size="lg" />
-      <nav className="flex flex-1 flex-col gap-2">
+      <nav className="flex flex-1 flex-col gap-1">
         {navItems.map((item) => {
           const Icon = item.icon
           return (
@@ -35,14 +33,14 @@ export default function Sidebar() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                `flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
                   isActive
-                    ? "bg-neon-500/15 text-neon-200"
-                    : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                    ? "bg-primary-500/10 text-primary-400 border border-primary-500/20"
+                    : "text-slate-400 hover:bg-white/5 hover:text-white border border-transparent"
                 }`
               }
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-5 w-5" />
               {item.label}
             </NavLink>
           )
@@ -50,89 +48,27 @@ export default function Sidebar() {
       </nav>
       <div className="space-y-3">
         {isAdmin && (
-          <div className="rounded-2xl border border-neon-500/30 bg-neon-500/10 p-4 text-sm text-slate-100">
-            <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-neon-300" />
-              <span className="font-semibold">Admin Panel</span>
-            </div>
-            <p className="mt-2 text-xs text-slate-400">
-              Secure tooling for plans, coupons, and server actions.
-            </p>
+          <div className="rounded-xl border border-primary-500/20 bg-primary-500/5 p-4">
             <NavLink
               to="/admin"
-              className="button-3d mt-3 inline-flex rounded-lg border border-neon-400/40 px-3 py-2 text-xs font-semibold text-neon-200"
+              className="flex items-center gap-2 text-sm font-medium text-white hover:text-primary-300 transition-colors"
             >
-              Open Admin
+              <Shield className="h-4 w-4" />
+              Admin panel
             </NavLink>
-            <div className="mt-2 grid grid-cols-2 gap-1.5">
-              <NavLink
-                to="/admin/frontpage"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
-              >
-                <Layout className="h-3 w-3" /> Front Page
-              </NavLink>
-              <NavLink
-                to="/admin/landing-plans"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
-              >
-                <Star className="h-3 w-3" /> Land. Plans
-              </NavLink>
-              <NavLink
-                to="/admin/plans"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
-              >
-                <Package className="h-3 w-3" /> Plans
-              </NavLink>
-              <NavLink
-                to="/admin/features"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
-              >
-                <Zap className="h-3 w-3" /> Features
-              </NavLink>
-              <NavLink
-                to="/admin/locations"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
-              >
-                <MapPin className="h-3 w-3" /> Locations
-              </NavLink>
-              <NavLink
-                to="/admin/about"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
-              >
-                <Users className="h-3 w-3" /> About
-              </NavLink>
-              <NavLink
-                to="/admin/knowledgebase"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
-              >
-                <BookOpen className="h-3 w-3" /> Knowledgebase
-              </NavLink>
-              <NavLink
-                to="/admin/status"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
-              >
-                <Activity className="h-3 w-3" /> Status
-              </NavLink>
-              <NavLink
-                to="/admin/site-settings"
-                className="col-span-2 flex items-center gap-1.5 rounded-lg border border-slate-700/40 px-2 py-1.5 text-xs text-slate-400 hover:border-neon-500/30 hover:text-neon-300"
-              >
-                <SlidersHorizontal className="h-3 w-3" /> Site Settings
-              </NavLink>
-            </div>
           </div>
         )}
-        <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-4">
-          <div className="mb-3 text-xs text-slate-400">
-            <p className="font-semibold text-slate-300">{user.email}</p>
-            <p className="mt-1">{isAdmin ? "Administrator" : "User"}</p>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <div className="mb-3 text-sm">
+            <p className="font-medium text-white truncate">{user.email}</p>
+            <p className="mt-1 text-xs text-slate-400">{isAdmin ? "Administrator" : "User"}</p>
           </div>
           <button
             onClick={handleLogout}
-            className="button-3d flex w-full items-center justify-center gap-2 rounded-xl border border-red-700/40 bg-red-900/20 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-900/30"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20 transition-colors"
           >
             <LogOut className="h-4 w-4" />
-            Logout
+            Sign out
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, cloneElement, isValidElement } from "react"
 import { Link } from "react-router-dom"
+import AdminNav from "../components/AdminNav.jsx"
 import SectionHeader from "../components/SectionHeader.jsx"
 import Badge from "../components/Badge.jsx"
 import { api } from "../services/api.js"
@@ -162,7 +163,9 @@ export default function AdminLandingPlans() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-dark-950">
+      <AdminNav />
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
       {/* Toast */}
       {toast && (
         <div className={`fixed right-6 top-6 z-50 flex items-center gap-3 rounded-xl border px-5 py-3 text-sm font-semibold shadow-lg ${
@@ -337,6 +340,7 @@ export default function AdminLandingPlans() {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

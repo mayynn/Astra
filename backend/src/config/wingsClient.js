@@ -54,7 +54,9 @@ export async function getNodeConfig(nodeId) {
     cachedAt: Date.now()
   }
 
-  console.log(`[Wings] Node ${nodeId} config cached: ${config.scheme}://${config.fqdn}:${config.port} (token: ${config.token ? config.token.substring(0, 8) + "…" : "MISSING"})`)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[Wings] Node ${nodeId} config cached: ${config.scheme}://${config.fqdn}:${config.port} (token: ${config.token ? "[REDACTED]" : "MISSING"})`)
+  }
 
   nodeCache.set(nodeId, config)
   return config

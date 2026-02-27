@@ -4,6 +4,7 @@ import {
   Plus, Edit2, Trash2, X, Package, Server, Cpu, HardDrive, Zap,
   Sparkles, Star, Crown, Shield, Rocket, Gift, Gem, Trophy, Circle
 } from "lucide-react"
+import AdminNav from "../components/AdminNav.jsx"
 import SectionHeader from "../components/SectionHeader.jsx"
 import ButtonSpinner from "../components/ButtonSpinner.jsx"
 import ConfirmModal from "../components/ConfirmModal.jsx"
@@ -143,7 +144,9 @@ export default function AdminPlans() {
   const plans = tab === "coin" ? coinPlans : realPlans
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-dark-950">
+      <AdminNav />
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
       <SectionHeader
         title="Plans Manager"
         subtitle="Create and manage coin plans and real-money plans for your users."
@@ -390,6 +393,7 @@ export default function AdminPlans() {
         onConfirm={confirmModal.onConfirm}
         onCancel={() => setConfirmModal({ open: false, title: "", message: "", detail: "", onConfirm: null, loading: false })}
       />
+      </div>
     </div>
   )
 }
