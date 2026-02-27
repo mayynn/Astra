@@ -1,11 +1,45 @@
+import { useEffect, useState } from "react"
 import { Navigate } from "react-router-dom"
+
+function getApiUrl() {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
+  if (window.location.hostname.includes("app.github.dev")) {
+    return window.location.origin.replace("-5173.", "-4000.") + "/api"
+  }
+  return "http://localhost:4000/api"
+}
 
 export default function ProtectedAdminRoute({ children }) {
   const token = localStorage.getItem("token")
-  const user = JSON.parse(localStorage.getItem("user") || "{}")
 
-  if (!token) {
-    return <Navigate to="/login" replace />
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("user") || "{}") } catch { return {} }
+  })
+  const [checking, setChecking] = useState(!user.role)
+
+  // Always verify the role from the server — don't trust potentially stale localStorage
+  useEffect(() => {
+    if (!token) { setChecking(false); return }
+    fetch(`${getApiUrl()}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(u => {
+        if (u) {
+          localStorage.setItem("user", JSON.stringify(u))
+          setUser(u)
+        }
+        setChecking(false)
+      })
+      .catch(() => setChecking(false))
+  }, [token])
+
+  if (!token) return <Navigate to="/login" replace />
+
+  if (checking) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary-400" />
+      </div>
+    )
   }
 
   if (user.role !== "admin") {

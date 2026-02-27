@@ -83,11 +83,11 @@ CONFIG_FILE="${HOME}/.astranodes-deploy.conf"
 # List of every variable the interactive wizard collects.
 CONFIG_VARS=(
   DOMAIN SSL_EMAIL APP_DIR APP_PORT
-  JWT_SECRET JWT_EXPIRES
+  JWT_SECRET JWT_EXPIRES SESSION_SECRET
   DB_PATH UPLOAD_DIR
   GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET GOOGLE_CALLBACK_URL
   DISCORD_CLIENT_ID DISCORD_CLIENT_SECRET DISCORD_CALLBACK_URL
-  PTERO_URL PTERO_KEY PTERO_EGG PTERO_IMAGE PTERO_STARTUP PTERO_ENV
+  PTERO_URL PTERO_KEY PTERO_CLIENT_KEY PTERO_EGG PTERO_IMAGE PTERO_STARTUP PTERO_ENV
   DISCORD_WEBHOOK DISCORD_SUPPORT_WEBHOOK
   UPI_ID_VAL UPI_NAME_VAL
   ADSTERRA_TOKEN ADSTERRA_DOMAIN_ID_VAL ADSTERRA_NATIVE_ID ADSTERRA_BANNER_ID_VAL
@@ -123,6 +123,11 @@ if [[ -f "$CONFIG_FILE" ]]; then
   if [[ "$USE_SAVED" == "yes" ]]; then
     load_config
     SKIPPED_WIZARD=true
+    # Regenerate SESSION_SECRET if it wasn't in the old saved config
+    if [[ -z "${SESSION_SECRET:-}" ]]; then
+      SESSION_SECRET="$(openssl rand -hex 32 2>/dev/null || tr -dc 'a-zA-Z0-9' </dev/urandom | head -c 64)"
+      warn "SESSION_SECRET was missing from saved config — generated a new one."
+    fi
     success "Loaded saved config — jumping to review."
   fi
 fi
@@ -214,6 +219,12 @@ ask     PTERO_IMAGE   "Docker image" "ghcr.io/pterodactyl/yolks:java_17"
 ask     PTERO_STARTUP "Startup command" 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar'
 echo -e "  ${CYAN}Environment variables for the Pterodactyl egg (JSON):${RESET}"
 ask     PTERO_ENV     "Pterodactyl ENV JSON" '{"MINECRAFT_VERSION":"1.20.1","SERVER_JARFILE":"server.jar","BUILD_NUMBER":"latest"}'
+
+echo ""
+echo -e "  ${YELLOW}Client API key (for backup management):${RESET}"
+echo -e "  Generate in Pterodactyl panel → Account → API Credentials (log in as an admin account)"
+echo -e "  The key starts with PTLC_.  Leave blank to disable the backup feature."
+ask_optional PTERO_CLIENT_KEY "Pterodactyl Client API key (PTLC_...)" ""
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  SECTION 6 — Discord
@@ -337,11 +348,12 @@ header "Preparing application directory"
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 if [[ "$REPO_DIR" == "$APP_DIR" ]]; then
-  info "Already in install directory — skipping copy."
+  info "Already in install directory — pulling latest code..."
+  git -C "$APP_DIR" pull --ff-only || warn "git pull failed — continuing with existing code."
 else
   if [[ -d "$APP_DIR/.git" ]]; then
     info "Pulling latest changes in ${APP_DIR}..."
-    git -C "$APP_DIR" pull --ff-only
+    git -C "$APP_DIR" pull --ff-only || warn "git pull failed — continuing with existing code."
   else
     info "Copying files to ${APP_DIR}..."
     mkdir -p "$APP_DIR"
@@ -378,12 +390,14 @@ ADSTERRA_TOKEN_LINE=""
 ADSTERRA_DID_LINE=""
 ADSTERRA_NID_LINE=""
 ADSTERRA_BID_LINE=""
+PTERO_CLIENT_LINE=""
 
 [[ -n "$DISCORD_SUPPORT_WEBHOOK" ]]  && DISCORD_SUPPORT_LINE="DISCORD_SUPPORT_WEBHOOK_URL=${DISCORD_SUPPORT_WEBHOOK}"
 [[ -n "$ADSTERRA_TOKEN" ]]           && ADSTERRA_TOKEN_LINE="ADSTERRA_API_TOKEN=${ADSTERRA_TOKEN}"
 [[ -n "$ADSTERRA_DOMAIN_ID_VAL" ]]   && ADSTERRA_DID_LINE="ADSTERRA_DOMAIN_ID=${ADSTERRA_DOMAIN_ID_VAL}"
 [[ -n "$ADSTERRA_NATIVE_ID" ]]       && ADSTERRA_NID_LINE="ADSTERRA_NATIVE_BANNER_ID=${ADSTERRA_NATIVE_ID}"
 [[ -n "$ADSTERRA_BANNER_ID_VAL" ]]   && ADSTERRA_BID_LINE="ADSTERRA_BANNER_ID=${ADSTERRA_BANNER_ID_VAL}"
+[[ -n "$PTERO_CLIENT_KEY" ]]         && PTERO_CLIENT_LINE="PTERODACTYL_CLIENT_KEY=${PTERO_CLIENT_KEY}"
 
 cat > "$BACKEND_ENV" <<EOF
 NODE_ENV=production
@@ -417,6 +431,7 @@ RATE_LIMIT_MAX=200
 # at provision time by selectBestNode() based on real-time resource checks.
 PTERODACTYL_URL=${PTERO_URL}
 PTERODACTYL_API_KEY=${PTERO_KEY}
+${PTERO_CLIENT_LINE}
 PTERODACTYL_DEFAULT_EGG=${PTERO_EGG}
 PTERODACTYL_DEFAULT_DOCKER_IMAGE=${PTERO_IMAGE}
 PTERODACTYL_DEFAULT_STARTUP=${PTERO_STARTUP}
@@ -435,12 +450,15 @@ ${ADSTERRA_TOKEN_LINE}
 ${ADSTERRA_DID_LINE}
 ${ADSTERRA_NID_LINE}
 ${ADSTERRA_BID_LINE}
-ADSTERRA_NATIVE_BANNER_KEY=${ADSTERRA_NATIVE_KEY}
-ADSTERRA_BANNER_KEY=${ADSTERRA_BANNER_KEY}
-ADSTERRA_NATIVE_BANNER_SCRIPT=${ADSTERRA_NATIVE_SCRIPT}
-ADSTERRA_BANNER_SCRIPT=${ADSTERRA_BANNER_SCRIPT}
-ADSTERRA_NATIVE_CONTAINER_ID=${ADSTERRA_NATIVE_CONT}
 EOF
+
+# Append optional Adsterra keys only when non-empty (avoid empty= lines)
+[[ -n "$ADSTERRA_NATIVE_KEY" ]]    && echo "ADSTERRA_NATIVE_BANNER_KEY=${ADSTERRA_NATIVE_KEY}"   >> "$BACKEND_ENV"
+[[ -n "$ADSTERRA_BANNER_KEY" ]]    && echo "ADSTERRA_BANNER_KEY=${ADSTERRA_BANNER_KEY}"           >> "$BACKEND_ENV"
+[[ -n "$ADSTERRA_NATIVE_SCRIPT" ]] && echo "ADSTERRA_NATIVE_BANNER_SCRIPT=${ADSTERRA_NATIVE_SCRIPT}" >> "$BACKEND_ENV"
+[[ -n "$ADSTERRA_BANNER_SCRIPT" ]] && echo "ADSTERRA_BANNER_SCRIPT=${ADSTERRA_BANNER_SCRIPT}"     >> "$BACKEND_ENV"
+[[ -n "$ADSTERRA_NATIVE_CONT" ]]   && echo "ADSTERRA_NATIVE_CONTAINER_ID=${ADSTERRA_NATIVE_CONT}" >> "$BACKEND_ENV"
+
 chmod 600 "$BACKEND_ENV"
 success "backend/.env written (chmod 600)"
 

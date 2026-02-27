@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS servers (
   plan_type TEXT NOT NULL CHECK (plan_type IN ('coin', 'real')),
   plan_id INTEGER NOT NULL,
   pterodactyl_server_id INTEGER,
+  identifier TEXT,
   expires_at TEXT NOT NULL,
   suspended_at TEXT,
   grace_expires_at TEXT,
@@ -177,3 +178,17 @@ CREATE TABLE IF NOT EXISTS announcements (
   message TEXT,
   is_active INTEGER DEFAULT 1
 );
+
+-- ─── Server Backups (tracked manual/automatic backups) ───────────────────────
+
+CREATE TABLE IF NOT EXISTS server_backups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  server_id INTEGER NOT NULL,
+  pterodactyl_backup_uuid TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL DEFAULT 'backup',
+  is_automatic INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (server_id) REFERENCES servers(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_server_backups_server ON server_backups(server_id);

@@ -6,9 +6,6 @@ const panelUrl = env.PTERODACTYL_URL.replace(/\/$/, "")
 /**
  * Application API – admin operations (create/delete servers, manage users, etc.)
  * Uses the admin API key (PTLA_xxx) stored in PTERODACTYL_API_KEY.
- *
- * Server management (files, console, power) is handled by talking to Wings
- * directly via wingsClient.js — no Client API (PTLC_) key needed.
  */
 export const appApi = axios.create({
   baseURL: `${panelUrl}/api/application`,
@@ -19,3 +16,22 @@ export const appApi = axios.create({
   },
   timeout: 15000
 })
+
+/**
+ * Client API – per-server actions that require a client key (PTLC_xxx).
+ * Used for: backup create/list/delete/restore, file manager, console.
+ * Set PTERODACTYL_CLIENT_KEY in .env to enable backup management.
+ * Generate in Pterodactyl panel: Account → API Credentials (admin account).
+ */
+export const clientApi = env.PTERODACTYL_CLIENT_KEY
+  ? axios.create({
+      baseURL: `${panelUrl}/api/client`,
+      headers: {
+        Authorization: `Bearer ${env.PTERODACTYL_CLIENT_KEY}`,
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      },
+      timeout: 30000
+    })
+  : null
+

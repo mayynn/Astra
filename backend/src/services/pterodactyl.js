@@ -1,6 +1,20 @@
 import axios from "axios"
 import { env } from "../config/env.js"
+import { clientApi } from "../config/ptero.js"
 import { selectBestNode, getAvailableNodes } from "../utils/selectBestNode.js"
+
+// Throw a descriptive error when backup operation is requested but no client key is set
+function requireClientApi(operation) {
+  if (!clientApi) {
+    const err = new Error(
+      `Backup ${operation} requires PTERODACTYL_CLIENT_KEY in .env. ` +
+      `Generate a Client API key in Pterodactyl panel → Account → API Credentials.`
+    )
+    err.statusCode = 501
+    throw err
+  }
+  return clientApi
+}
 
 const client = axios.create({
   baseURL: `${env.PTERODACTYL_URL.replace(/\/$/, "")}/api/application`,
@@ -153,8 +167,8 @@ export const pterodactyl = {
         },
         feature_limits: {
           databases: 0,
-          allocations: 0,
-          backups: 0
+          allocations: limits.allocations || 0,
+          backups: limits.backups || 0
         },
         start_on_completion: true
       }
@@ -291,30 +305,36 @@ export const pterodactyl = {
     }
   },
 
-  // Backup Management
-  async createBackup(serverId, name = 'manual-backup') {
+  // ── Backup Management (uses Client API — requires PTERODACTYL_CLIENT_KEY) ───
+  // All methods take the server's short `identifier` (e.g. "1a2b3c4d"),
+  // NOT the numeric application ID.
+
+  async createBackup(identifier, name = 'manual-backup') {
+    const api = requireClientApi('create')
     try {
-      console.log(`[PTERODACTYL] Creating backup for server ${serverId}...`)
-      const response = await client.post(`/servers/${serverId}/backups`, {
+      console.log(`[PTERODACTYL] Creating backup for server ${identifier}...`)
+      const response = await api.post(`/servers/${identifier}/backups`, {
         name,
         is_locked: false
       })
-      
       const backupUuid = response.data.attributes.uuid
       console.log(`[PTERODACTYL] ✓ Backup created: ${backupUuid}`)
       return backupUuid
     } catch (error) {
-      console.error(`[PTERODACTYL] ✗ Failed to create backup for server ${serverId}:`, error.message)
-      throw new Error('Failed to create backup')
+      if (error.statusCode === 501) throw error
+      console.error(`[PTERODACTYL] ✗ Failed to create backup for ${identifier}:`, error.message)
+      const err = new Error('Failed to create backup')
+      err.statusCode = 502
+      throw err
     }
   },
 
-  async getBackups(serverId) {
+  async getBackups(identifier) {
+    const api = requireClientApi('list')
     try {
-      console.log(`[PTERODACTYL] Fetching backups for server ${serverId}...`)
-      const response = await client.get(`/servers/${serverId}/backups`)
-      
-      const backups = response.data.data.map(backup => ({
+      console.log(`[PTERODACTYL] Fetching backups for server ${identifier}...`)
+      const response = await api.get(`/servers/${identifier}/backups`)
+      const backups = (response.data.data || []).map(backup => ({
         uuid: backup.attributes.uuid,
         name: backup.attributes.name,
         bytes: backup.attributes.bytes,
@@ -323,51 +343,65 @@ export const pterodactyl = {
         is_successful: backup.attributes.is_successful,
         is_locked: backup.attributes.is_locked
       }))
-      
       console.log(`[PTERODACTYL] ✓ Found ${backups.length} backups`)
       return backups
     } catch (error) {
-      console.error(`[PTERODACTYL] ✗ Failed to fetch backups for server ${serverId}:`, error.message)
-      throw new Error('Failed to fetch backups')
+      if (error.statusCode === 501) throw error
+      console.error(`[PTERODACTYL] ✗ Failed to fetch backups for ${identifier}:`, error.message)
+      const err = new Error('Failed to fetch backups')
+      err.statusCode = 502
+      throw err
     }
   },
 
-  async deleteBackup(serverId, backupUuid) {
+  async deleteBackup(identifier, backupUuid) {
+    const api = requireClientApi('delete')
     try {
-      console.log(`[PTERODACTYL] Deleting backup ${backupUuid} from server ${serverId}...`)
-      await client.delete(`/servers/${serverId}/backups/${backupUuid}`)
+      console.log(`[PTERODACTYL] Deleting backup ${backupUuid} from server ${identifier}...`)
+      await api.delete(`/servers/${identifier}/backups/${backupUuid}`)
       console.log(`[PTERODACTYL] ✓ Backup deleted: ${backupUuid}`)
     } catch (error) {
+      if (error.statusCode === 501) throw error
       if (error.response?.status === 404) {
         console.log(`[PTERODACTYL] Backup already gone (404): ${backupUuid}`)
         return
       }
       console.error(`[PTERODACTYL] ✗ Failed to delete backup ${backupUuid}:`, error.message)
-      throw new Error('Failed to delete backup')
+      const err = new Error('Failed to delete backup')
+      err.statusCode = 502
+      throw err
     }
   },
 
-  async restoreBackup(serverId, backupUuid) {
+  async restoreBackup(identifier, backupUuid) {
+    const api = requireClientApi('restore')
     try {
-      console.log(`[PTERODACTYL] Restoring backup ${backupUuid} for server ${serverId}...`)
-      await client.post(`/servers/${serverId}/backups/${backupUuid}/restore`)
+      console.log(`[PTERODACTYL] Restoring backup ${backupUuid} for server ${identifier}...`)
+      await api.post(`/servers/${identifier}/backups/${backupUuid}/restore`, { truncate: false })
       console.log(`[PTERODACTYL] ✓ Backup restore initiated: ${backupUuid}`)
     } catch (error) {
+      if (error.statusCode === 501) throw error
       console.error(`[PTERODACTYL] ✗ Failed to restore backup ${backupUuid}:`, error.message)
-      throw new Error('Failed to restore backup')
+      const err = new Error('Failed to restore backup')
+      err.statusCode = 502
+      throw err
     }
   },
 
-  async getBackupDownloadUrl(serverId, backupUuid) {
+  async getBackupDownloadUrl(identifier, backupUuid) {
+    const api = requireClientApi('download')
     try {
       console.log(`[PTERODACTYL] Getting download URL for backup ${backupUuid}...`)
-      const response = await client.get(`/servers/${serverId}/backups/${backupUuid}/download`)
+      const response = await api.get(`/servers/${identifier}/backups/${backupUuid}/download`)
       const downloadUrl = response.data.attributes.url
       console.log(`[PTERODACTYL] ✓ Got download URL`)
       return downloadUrl
     } catch (error) {
+      if (error.statusCode === 501) throw error
       console.error(`[PTERODACTYL] ✗ Failed to get download URL for backup ${backupUuid}:`, error.message)
-      throw new Error('Failed to get backup download URL')
+      const err = new Error('Failed to get backup download URL')
+      err.statusCode = 502
+      throw err
     }
   },
 

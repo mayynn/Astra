@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react"
 import { NavLink, Outlet, useNavigate } from "react-router-dom"
 import { LogOut, LayoutDashboard, Package, Coins, Server, CreditCard, Ticket, LifeBuoy, Shield } from "lucide-react"
 import Sidebar from "../components/Sidebar.jsx"
 import Logo from "../components/Logo.jsx"
+import { getBackendBaseUrl } from "../services/api.js"
 
 const mobileNav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -13,10 +15,35 @@ const mobileNav = [
   { to: "/support", label: "Support", icon: LifeBuoy }
 ]
 
+function getApiUrl() {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
+  if (window.location.hostname.includes("app.github.dev")) {
+    return window.location.origin.replace("-5173.", "-4000.") + "/api"
+  }
+  return "http://localhost:4000/api"
+}
+
 export default function AppLayout() {
-  const user = JSON.parse(localStorage.getItem("user") || "{}")
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("user") || "{}") } catch { return {} }
+  })
   const isAdmin = user.role === "admin"
   const navigate = useNavigate()
+
+  // Keep user in sync: refresh from /api/auth/me on every layout mount
+  useEffect(() => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+    fetch(`${getApiUrl()}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(u => {
+        if (u) {
+          localStorage.setItem("user", JSON.stringify(u))
+          setUser(u)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const handleLogout = () => {
     localStorage.removeItem("token")

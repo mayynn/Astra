@@ -5,6 +5,25 @@ import { pterodactyl } from '../services/pterodactyl.js';
 
 const router = Router();
 
+/**
+ * Resolve the Pterodactyl server identifier (8-char string) for a server.
+ * Uses the cached value from DB if available; falls back to an API call.
+ */
+async function resolveIdentifier(server) {
+  if (server.identifier) return server.identifier
+  // Identifier wasn't cached at creation time — fetch it now and cache it
+  try {
+    const details = await pterodactyl.getServerDetails(server.pterodactyl_server_id)
+    if (details?.identifier) {
+      await runSync('UPDATE servers SET identifier = ? WHERE id = ?', [details.identifier, server.id])
+      return details.identifier
+    }
+  } catch (err) {
+    console.error('[BACKUPS] Could not resolve identifier:', err.message)
+  }
+  return null
+}
+
 // Get all backups for a server
 router.get('/:serverId/backups', requireAuth, async (req, res, next) => {
   try {
@@ -12,12 +31,17 @@ router.get('/:serverId/backups', requireAuth, async (req, res, next) => {
     
     // Verify server ownership
     const server = await getOne(
-      'SELECT id, user_id, pterodactyl_server_id, plan_type, plan_id FROM servers WHERE id = ? AND user_id = ?',
+      'SELECT id, user_id, pterodactyl_server_id, identifier, plan_type, plan_id FROM servers WHERE id = ? AND user_id = ?',
       [serverId, req.user.id]
     );
     
     if (!server) {
       return res.status(404).json({ error: 'Server not found' });
+    }
+
+    const identifier = await resolveIdentifier(server);
+    if (!identifier) {
+      return res.status(502).json({ error: 'Could not resolve server identifier. Try again shortly.' });
     }
     
     // Get backup limit from plan
@@ -28,8 +52,8 @@ router.get('/:serverId/backups', requireAuth, async (req, res, next) => {
     
     const backupLimit = plan?.backup_count || 0;
     
-    // Get backups from Pterodactyl
-    const pteroBackups = await pterodactyl.getBackups(server.pterodactyl_server_id);
+    // Get backups from Pterodactyl (uses Client API)
+    const pteroBackups = await pterodactyl.getBackups(identifier);
     
     // Get our tracked backups
     const ourBackups = await query(
@@ -63,12 +87,17 @@ router.post('/:serverId/backups', requireAuth, async (req, res, next) => {
     
     // Verify server ownership
     const server = await getOne(
-      'SELECT id, user_id, pterodactyl_server_id, plan_type, plan_id FROM servers WHERE id = ? AND user_id = ?',
+      'SELECT id, user_id, pterodactyl_server_id, identifier, plan_type, plan_id FROM servers WHERE id = ? AND user_id = ?',
       [serverId, req.user.id]
     );
     
     if (!server) {
       return res.status(404).json({ error: 'Server not found' });
+    }
+
+    const identifier = await resolveIdentifier(server);
+    if (!identifier) {
+      return res.status(502).json({ error: 'Could not resolve server identifier. Try again shortly.' });
     }
     
     // Get backup limit from plan
@@ -83,28 +112,22 @@ router.post('/:serverId/backups', requireAuth, async (req, res, next) => {
       return res.status(403).json({ error: 'Your plan does not include backups' });
     }
     
-    // Check current backup count
-    const currentBackups = await query(
-      'SELECT COUNT(*) as count FROM server_backups WHERE server_id = ?',
-      [serverId]
-    );
-    
-    const currentCount = currentBackups[0]?.count || 0;
-    
-    if (currentCount >= backupLimit) {
+    // Use live count from Pterodactyl (single source of truth)
+    const pteroBackups = await pterodactyl.getBackups(identifier);
+    if (pteroBackups.length >= backupLimit) {
       return res.status(403).json({ 
         error: `Backup limit reached (${backupLimit}). Please delete old backups first.` 
       });
     }
     
     // Create backup in Pterodactyl
-    const backupName = name || `manual-backup-${new Date().toISOString().split('T')[0]}`;
-    const backupUuid = await pterodactyl.createBackup(server.pterodactyl_server_id, backupName);
+    const backupName = name || `backup-${new Date().toISOString().split('T')[0]}`;
+    const backupUuid = await pterodactyl.createBackup(identifier, backupName);
     
     // Track in our database
     await runSync(
-      'INSERT INTO server_backups (server_id, pterodactyl_backup_uuid) VALUES (?, ?)',
-      [serverId, backupUuid]
+      'INSERT OR IGNORE INTO server_backups (server_id, pterodactyl_backup_uuid, name) VALUES (?, ?, ?)',
+      [serverId, backupUuid, backupName]
     );
     
     res.status(201).json({ 
@@ -121,20 +144,16 @@ router.delete('/:serverId/backups/:backupUuid', requireAuth, async (req, res, ne
   try {
     const { serverId, backupUuid } = req.params;
     
-    // Verify server ownership
     const server = await getOne(
-      'SELECT id, user_id, pterodactyl_server_id FROM servers WHERE id = ? AND user_id = ?',
+      'SELECT id, user_id, pterodactyl_server_id, identifier FROM servers WHERE id = ? AND user_id = ?',
       [serverId, req.user.id]
     );
+    if (!server) return res.status(404).json({ error: 'Server not found' });
+
+    const identifier = await resolveIdentifier(server);
+    if (!identifier) return res.status(502).json({ error: 'Could not resolve server identifier.' });
     
-    if (!server) {
-      return res.status(404).json({ error: 'Server not found' });
-    }
-    
-    // Delete from Pterodactyl
-    await pterodactyl.deleteBackup(server.pterodactyl_server_id, backupUuid);
-    
-    // Delete from our database
+    await pterodactyl.deleteBackup(identifier, backupUuid);
     await runSync(
       'DELETE FROM server_backups WHERE server_id = ? AND pterodactyl_backup_uuid = ?',
       [serverId, backupUuid]
@@ -151,19 +170,16 @@ router.post('/:serverId/backups/:backupUuid/restore', requireAuth, async (req, r
   try {
     const { serverId, backupUuid } = req.params;
     
-    // Verify server ownership
     const server = await getOne(
-      'SELECT id, user_id, pterodactyl_server_id FROM servers WHERE id = ? AND user_id = ?',
+      'SELECT id, user_id, pterodactyl_server_id, identifier FROM servers WHERE id = ? AND user_id = ?',
       [serverId, req.user.id]
     );
+    if (!server) return res.status(404).json({ error: 'Server not found' });
+
+    const identifier = await resolveIdentifier(server);
+    if (!identifier) return res.status(502).json({ error: 'Could not resolve server identifier.' });
     
-    if (!server) {
-      return res.status(404).json({ error: 'Server not found' });
-    }
-    
-    // Restore backup in Pterodactyl
-    await pterodactyl.restoreBackup(server.pterodactyl_server_id, backupUuid);
-    
+    await pterodactyl.restoreBackup(identifier, backupUuid);
     res.json({ message: 'Backup restore initiated successfully' });
   } catch (error) {
     next(error);
@@ -175,19 +191,16 @@ router.get('/:serverId/backups/:backupUuid/download', requireAuth, async (req, r
   try {
     const { serverId, backupUuid } = req.params;
     
-    // Verify server ownership
     const server = await getOne(
-      'SELECT id, user_id, pterodactyl_server_id FROM servers WHERE id = ? AND user_id = ?',
+      'SELECT id, user_id, pterodactyl_server_id, identifier FROM servers WHERE id = ? AND user_id = ?',
       [serverId, req.user.id]
     );
+    if (!server) return res.status(404).json({ error: 'Server not found' });
+
+    const identifier = await resolveIdentifier(server);
+    if (!identifier) return res.status(502).json({ error: 'Could not resolve server identifier.' });
     
-    if (!server) {
-      return res.status(404).json({ error: 'Server not found' });
-    }
-    
-    // Get download URL from Pterodactyl
-    const downloadUrl = await pterodactyl.getBackupDownloadUrl(server.pterodactyl_server_id, backupUuid);
-    
+    const downloadUrl = await pterodactyl.getBackupDownloadUrl(identifier, backupUuid);
     res.json({ url: downloadUrl });
   } catch (error) {
     next(error);

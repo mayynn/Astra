@@ -144,6 +144,7 @@ router.post("/purchase", requireAuth, purchaseLimiter, validate(purchaseSchema),
 
     // ── Create Pterodactyl server (external call, outside transaction) ─
     let pteroServerId
+    let pteroIdentifier = null
     try {
       pteroServerId = await pterodactyl.createServer({
         name: serverName,
@@ -153,6 +154,13 @@ router.post("/purchase", requireAuth, purchaseLimiter, validate(purchaseSchema),
         software: software,
         eggId: eggId || null
       })
+      // Fetch the short identifier needed for Client API (backups, etc.)
+      try {
+        const details = await pterodactyl.getServerDetails(pteroServerId)
+        pteroIdentifier = details?.identifier || null
+      } catch {
+        // non-fatal — identifier can be fetched later
+      }
     } catch (pteroErr) {
       // Refund the balance if Pterodactyl fails
       const balanceField = getBalanceField(planType)
@@ -168,8 +176,8 @@ router.post("/purchase", requireAuth, purchaseLimiter, validate(purchaseSchema),
     // ── Record the server in DB ───────────────────────────────────────
     try {
       await runSync(
-        "INSERT INTO servers (user_id, name, plan_type, plan_id, pterodactyl_server_id, expires_at, status, location, software, egg_id) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)",
-        [req.user.id, serverName, planType, planId, pteroServerId, expiresAt, location || "", software, eggId || null]
+        "INSERT INTO servers (user_id, name, plan_type, plan_id, pterodactyl_server_id, identifier, expires_at, status, location, software, egg_id) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)",
+        [req.user.id, serverName, planType, planId, pteroServerId, pteroIdentifier, expiresAt, location || "", software, eggId || null]
       )
     } catch (dbErr) {
       await pterodactyl.deleteServer(pteroServerId)

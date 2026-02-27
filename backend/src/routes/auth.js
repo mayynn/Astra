@@ -2,7 +2,7 @@ import { Router } from "express"
 import { z } from "zod"
 import { signToken } from "../utils/jwt.js"
 import { requireAuth } from "../middlewares/auth.js"
-import { ok, fail } from "../utils/apiResponse.js"
+import { fail } from "../utils/apiResponse.js"
 import passport from "../config/passport.js"
 import { env } from "../config/env.js"
 import { hashPassword, verifyPassword } from "../utils/password.js"
@@ -200,8 +200,13 @@ router.post("/reset-password", requireAuth, validate(resetPasswordSchema), async
       return fail(res, "New password must be different from current password", 400)
     }
 
-    const user = await getOne("SELECT id, password_hash FROM users WHERE id = ?", [req.user.id])
+    const user = await getOne("SELECT id, password_hash, oauth_provider FROM users WHERE id = ?", [req.user.id])
     if (!user) return fail(res, "User not found", 404)
+
+    // OAuth-only users have no password
+    if (user.oauth_provider || !user.password_hash) {
+      return fail(res, "Password reset is not available for OAuth accounts", 400)
+    }
 
     const validCurrent = await verifyPassword(currentPassword, user.password_hash)
     if (!validCurrent) return fail(res, "Current password is incorrect", 401)
@@ -209,7 +214,7 @@ router.post("/reset-password", requireAuth, validate(resetPasswordSchema), async
     const newHash = await hashPassword(newPassword)
     await runSync("UPDATE users SET password_hash = ? WHERE id = ?", [newHash, req.user.id])
 
-    return ok(res, "Password reset successfully")
+    return res.json({ message: "Password reset successfully" })
   } catch (error) {
     next(error)
   }
@@ -307,6 +312,19 @@ router.post("/resend-verification", authRateLimiter, async (req, res, next) => {
   }
 })
 */
+
+// ============================================================================
+// GET /me — return the authenticated user's profile
+// ============================================================================
+router.get("/me", requireAuth, async (req, res) => {
+  return res.json({
+    id: req.user.id,
+    email: req.user.email,
+    role: req.user.role,
+    coins: req.user.coins,
+    balance: req.user.balance
+  })
+})
 
 // ============================================================================
 // OAuth Routes (Google & Discord) - ACTIVE

@@ -21,6 +21,9 @@ const envSchema = z.object({
   RATE_LIMIT_MAX: z.string().default("200"),
   PTERODACTYL_URL: z.string().min(1),
   PTERODACTYL_API_KEY: z.string().min(1),
+  // Optional client API key (PTLC_xxx) — required for backup management.
+  // Generate in Pterodactyl panel: Account → API Credentials (as an admin account).
+  PTERODACTYL_CLIENT_KEY: z.string().optional(),
   // PTERODACTYL_DEFAULT_NODE is no longer required — nodes are selected
   // automatically by selectBestNode() based on real-time resource availability.
   // You may still set it as a hint but it is no longer used.
@@ -30,14 +33,14 @@ const envSchema = z.object({
   PTERODACTYL_DEFAULT_DOCKER_IMAGE: z.string().min(1),
   PTERODACTYL_DEFAULT_STARTUP: z.string().min(1),
   PTERODACTYL_DEFAULT_ENV: z.string().default("{}"),
-  DISCORD_WEBHOOK_URL: z.string().min(1),
+  DISCORD_WEBHOOK_URL: z.string().optional().default(""),
   // Optional support webhook
   DISCORD_SUPPORT_WEBHOOK_URL: z.string().optional(),
   // UPI payment details shown on Billing page
   UPI_ID: z.string().optional().default(""),
   UPI_NAME: z.string().optional().default(""),
-  ADSTERRA_API_TOKEN: z.string().min(1),
-  ADSTERRA_DOMAIN_ID: z.string().min(1),
+  ADSTERRA_API_TOKEN: z.string().optional().default(""),
+  ADSTERRA_DOMAIN_ID: z.string().optional().default("0"),
   ADSTERRA_NATIVE_BANNER_ID: z.string().optional(),
   ADSTERRA_BANNER_ID: z.string().optional(),
   ADSTERRA_NATIVE_BANNER_KEY: z.string().optional(),

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react"
 import { NavLink, useNavigate } from "react-router-dom"
 import { LayoutDashboard, Package, Coins, Ticket, CreditCard, Server, Shield, LogOut, LifeBuoy, Layout, Star, Settings, SlidersHorizontal, Zap, MapPin, Users, BookOpen, Activity } from "lucide-react"
 import Logo from "./Logo.jsx"
@@ -12,9 +13,20 @@ const navItems = [
 ]
 
 export default function Sidebar() {
-  const user = JSON.parse(localStorage.getItem("user") || "{}")
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("user") || "{}") } catch { return {} }
+  })
   const isAdmin = user.role === "admin"
   const navigate = useNavigate()
+
+  // Re-read user whenever localStorage changes (e.g. after callback redirect)
+  useEffect(() => {
+    const sync = () => {
+      try { setUser(JSON.parse(localStorage.getItem("user") || "{}")) } catch { setUser({}) }
+    }
+    window.addEventListener("storage", sync)
+    return () => window.removeEventListener("storage", sync)
+  }, [])
 
   const handleLogout = () => {
     localStorage.removeItem("token")

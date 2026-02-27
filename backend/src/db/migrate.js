@@ -121,6 +121,29 @@ export default async function migrate() {
       // Column already exists — safe to ignore
     }
 
+    // Add identifier column to servers (Pterodactyl 8-char short identifier)
+    try {
+      await runSync("ALTER TABLE servers ADD COLUMN identifier TEXT")
+      console.log("[Migration] ✓ Added identifier column to servers")
+    } catch {
+      // Column already exists — safe to ignore
+    }
+
+    // Ensure server_backups table exists (added in upgrade)
+    await runSync(`
+      CREATE TABLE IF NOT EXISTS server_backups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        server_id INTEGER NOT NULL,
+        pterodactyl_backup_uuid TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL DEFAULT 'backup',
+        is_automatic INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (server_id) REFERENCES servers(id)
+      )
+    `).catch(() => {})
+    await runSync("CREATE INDEX IF NOT EXISTS idx_server_backups_server ON server_backups(server_id)").catch(() => {})
+    console.log("[Migration] ✓ server_backups table ensured")
+
     // Seed default site_content sections
     console.log("[Migration] Seeding default site_content...")
     for (const section of DEFAULT_SITE_CONTENT) {

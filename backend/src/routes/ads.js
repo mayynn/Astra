@@ -1,8 +1,12 @@
 import { Router } from "express"
 import { adsterra } from "../services/adsterra.js"
 import { requireAuth, requireAdmin } from "../middlewares/auth.js"
+import { env } from "../config/env.js"
 
 const router = Router()
+
+// If Adsterra is not configured, return empty responses instead of crashing
+const adsEnabled = Boolean(env.ADSTERRA_API_TOKEN && env.ADSTERRA_DOMAIN_ID && Number(env.ADSTERRA_DOMAIN_ID) > 0)
 
 /**
  * GET /ads/coins
@@ -11,6 +15,7 @@ const router = Router()
  * Supports both iframe-based (direct_url) and script-based ads
  */
 router.get("/coins", async (req, res, next) => {
+  if (!adsEnabled) return res.json({ nativeBanner: null, banner: null })
   try {
     const placements = await adsterra.getCoinsPagePlacements()
     
