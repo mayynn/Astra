@@ -4,6 +4,8 @@ import AuthLayout from "./layouts/AuthLayout.jsx"
 import Landing from "./pages/Landing.jsx"
 import Login from "./pages/Login.jsx"
 import Register from "./pages/Register.jsx"
+import OAuthCallback from "./pages/OAuthCallback.jsx"
+import VerifyEmail from "./pages/VerifyEmail.jsx"
 import Dashboard from "./pages/Dashboard.jsx"
 import Plans from "./pages/Plans.jsx"
 import CouponRedeem from "./pages/CouponRedeem.jsx"
@@ -40,6 +42,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/auth/callback" element={<OAuthCallback />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/features" element={<Features />} />
       <Route path="/locations" element={<Locations />} />
       <Route path="/about" element={<About />} />

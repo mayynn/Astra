@@ -16,7 +16,9 @@ const purchaseSchema = z.object({
     plan_id: z.number().int().positive(),
     server_name: z.string().min(3).max(60),
     location: z.string().max(80).optional(),
-    node_id: z.number().int().positive().optional()
+    node_id: z.number().int().positive().optional(),
+    software: z.string().max(100).optional().default("minecraft"),
+    egg_id: z.number().int().positive().optional()
   })
 })
 
@@ -77,7 +79,7 @@ router.get("/", requireAuth, async (req, res, next) => {
 
 router.post("/purchase", requireAuth, purchaseLimiter, validate(purchaseSchema), async (req, res, next) => {
   try {
-    const { plan_type: planType, plan_id: planId, server_name: serverName, location, node_id: nodeId } = req.body
+    const { plan_type: planType, plan_id: planId, server_name: serverName, location, node_id: nodeId, software = "minecraft", egg_id: eggId } = req.body
 
     // ── Atomic balance check + deduction inside a transaction ──────────
     // Uses BEGIN IMMEDIATE to serialize concurrent purchases per user,
@@ -132,7 +134,9 @@ router.post("/purchase", requireAuth, purchaseLimiter, validate(purchaseSchema),
         name: serverName,
         userId: user.pterodactyl_user_id,
         limits: getLimits(plan),
-        nodeId: nodeId || null
+        nodeId: nodeId || null,
+        software: software,
+        eggId: eggId || null
       })
     } catch (pteroErr) {
       // Refund the balance if Pterodactyl fails
@@ -149,8 +153,8 @@ router.post("/purchase", requireAuth, purchaseLimiter, validate(purchaseSchema),
     // ── Record the server in DB ───────────────────────────────────────
     try {
       await runSync(
-        "INSERT INTO servers (user_id, name, plan_type, plan_id, pterodactyl_server_id, expires_at, status, location) VALUES (?, ?, ?, ?, ?, ?, 'active', ?)",
-        [req.user.id, serverName, planType, planId, pteroServerId, expiresAt, location || ""]
+        "INSERT INTO servers (user_id, name, plan_type, plan_id, pterodactyl_server_id, expires_at, status, location, software, egg_id) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)",
+        [req.user.id, serverName, planType, planId, pteroServerId, expiresAt, location || "", software, eggId || null]
       )
     } catch (dbErr) {
       await pterodactyl.deleteServer(pteroServerId)

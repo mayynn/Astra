@@ -376,15 +376,29 @@ router.get("/:serverId/plugins/sources", requireAuth, resolveServer, (req, res) 
   })
 })
 
-/** GET /plugins/search?q=...&type=plugin|mod&source=modrinth|curseforge|all */
+/** GET /plugins/search?q=...&type=plugin|mod|datapack|shader|resourcepack|modpack&source=modrinth|curseforge|all */
 router.get("/:serverId/plugins/search", requireAuth, resolveServer, async (req, res, next) => {
   try {
     const q = req.query.q || ""
-    if (q.length < 2) return res.json([])
-    const type = ["plugin", "mod"].includes(req.query.type) ? req.query.type : "plugin"
+    const validTypes = ["plugin", "mod", "datapack", "shader", "resourcepack", "modpack"]
+    const type = validTypes.includes(req.query.type) ? req.query.type : "plugin"
     const source = ["modrinth", "curseforge", "all"].includes(req.query.source) ? req.query.source : "all"
-    const results = await pluginInstaller.search(q, { type, source })
+    
+    // If no query, return popular/featured items instead of empty array
+    const searchQuery = q.length < 2 ? (type === "mod" ? "fabric" : type === "datapack" ? "vanilla" : "essentials") : q
+    const results = await pluginInstaller.search(searchQuery, { type, source })
     res.json(results)
+  } catch (error) {
+    next(error)
+  }
+})
+
+/** GET /plugins/:slug/versions — get all versions for a Modrinth project */
+router.get("/:serverId/plugins/:slug/versions", requireAuth, resolveServer, async (req, res, next) => {
+  try {
+    const { slug } = req.params
+    const versions = await pluginInstaller.getVersions(slug)
+    res.json(versions)
   } catch (error) {
     next(error)
   }
@@ -396,7 +410,8 @@ const installSchema = z.object({
     slug: z.string().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/).optional(),
     projectId: z.union([z.string(), z.number()]).optional(),
     fileId: z.union([z.string(), z.number()]).optional(),
-    type: z.enum(["plugin", "mod"]).default("plugin")
+    versionId: z.string().optional(),
+    type: z.enum(["plugin", "mod", "datapack", "shader", "resourcepack", "modpack"]).default("plugin")
   }).refine(
     (d) => (d.source === "modrinth" && d.slug) || (d.source === "curseforge" && d.projectId),
     { message: "modrinth requires slug; curseforge requires projectId" }
@@ -410,10 +425,10 @@ router.post(
   validate(installSchema),
   async (req, res, next) => {
     try {
-      const { source, slug, projectId, fileId, type } = req.body
+      const { source, slug, projectId, fileId, versionId, type } = req.body
       const result = await pluginInstaller.install(req.ptero.uuid, req.ptero.node, {
         source, slug, projectId: projectId ? Number(projectId) : undefined,
-        fileId: fileId ? Number(fileId) : undefined, type
+        fileId: fileId ? Number(fileId) : undefined, versionId, type
       })
       res.json(result)
     } catch (error) {
@@ -438,7 +453,7 @@ router.get("/:serverId/plugins", requireAuth, resolveServer, async (req, res, ne
 const deletePluginSchema = z.object({
   body: z.object({
     filename: z.string().min(1).max(255),
-    type: z.enum(["plugin", "mod"]).default("plugin")
+    type: z.enum(["plugin", "mod", "datapack", "shader", "resourcepack", "modpack"]).default("plugin")
   })
 })
 

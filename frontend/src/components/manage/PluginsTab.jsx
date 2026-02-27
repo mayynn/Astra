@@ -1,11 +1,21 @@
 import { useState, useEffect } from "react"
-import { Search, Download, Trash2, Package, Loader2, Blocks, Puzzle } from "lucide-react"
+import { Search, Download, Trash2, Package, Loader2, Blocks, Puzzle, Database, Eye, Image, Box, AlertCircle } from "lucide-react"
 import { api } from "../../services/api.js"
+import VersionModal from "./VersionModal.jsx"
 
 const SOURCE_COLORS = {
   modrinth: "bg-green-900/30 text-green-300 border-green-700/40",
   curseforge: "bg-orange-900/30 text-orange-300 border-orange-700/40"
 }
+
+const PROJECT_TYPES = [
+  { id: "plugin", label: "Plugins", icon: Puzzle, color: "neon" },
+  { id: "mod", label: "Mods", icon: Blocks, color: "purple" },
+  { id: "datapack", label: "Datapacks", icon: Database, color: "blue" },
+  { id: "shader", label: "Shaders", icon: Eye, color: "yellow" },
+  { id: "resourcepack", label: "Resource Packs", icon: Image, color: "pink" },
+  { id: "modpack", label: "Modpacks", icon: Box, color: "indigo" }
+]
 
 export default function PluginsTab({ serverId }) {
   const [search, setSearch] = useState("")
@@ -20,9 +30,13 @@ export default function PluginsTab({ serverId }) {
   const [success, setSuccess] = useState("")
 
   // Filters
-  const [type, setType] = useState("plugin") // "plugin" | "mod"
-  const [source, setSource] = useState("all") // "all" | "modrinth" | "curseforge"
+  const [type, setType] = useState("plugin")
+  const [source, setSource] = useState("all")
   const [hasCF, setHasCF] = useState(false)
+
+  // Version selection modal
+  const [selectedProject, setSelectedProject] = useState(null)
+  const [versionModalOpen, setVersionModalOpen] = useState(false)
 
   const token = localStorage.getItem("token")
 
@@ -48,6 +62,24 @@ export default function PluginsTab({ serverId }) {
 
   useEffect(() => { loadInstalled() }, [serverId])
 
+  // Load featured content on mount or when type/source changes
+  const loadFeatured = async () => {
+    setSearching(true)
+    setError("")
+    try {
+      const data = await api.serverSearchPlugins(token, serverId, "", { type, source })
+      setResults(data)
+    } catch (err) {
+      // Silently fail for featured load
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  useEffect(() => {
+    loadFeatured()
+  }, [serverId, type, source])
+
   // Search
   const handleSearch = async (e) => {
     e?.preventDefault()
@@ -64,13 +96,19 @@ export default function PluginsTab({ serverId }) {
     }
   }
 
-  // Re-search when type/source changes (if we already have a query)
-  useEffect(() => {
-    if (search.length >= 2) handleSearch()
-  }, [type, source])
+  // Open version selector
+  const handleSelectProject = (item) => {
+    if (item.source === "modrinth") {
+      setSelectedProject(item)
+      setVersionModalOpen(true)
+    } else {
+      // CurseForge: install directly (no version selection UI yet)
+      handleQuickInstall(item)
+    }
+  }
 
-  // Install
-  const handleInstall = async (item) => {
+  // Quick install (without version selection)
+  const handleQuickInstall = async (item) => {
     const key = item.source + "-" + (item.slug || item.id)
     setInstalling(key)
     setError("")
@@ -94,6 +132,13 @@ export default function PluginsTab({ serverId }) {
     }
   }
 
+  // Handle install from version modal
+  const handleInstallFromModal = (data) => {
+    setSuccess(`Installed ${data.name} (${data.filename}). Restart server to load.`)
+    loadInstalled()
+    setTimeout(() => setSuccess(""), 6000)
+  }
+
   // Delete
   const handleDelete = async (filename, delType) => {
     setDeleting(filename)
@@ -109,43 +154,50 @@ export default function PluginsTab({ serverId }) {
   }
 
   const installedList = type === "mod" ? installedMods : installedPlugins
+  const currentTypeConfig = PROJECT_TYPES.find((t) => t.id === type)
 
   return (
     <div className="space-y-6">
       {error && (
-        <div className="rounded-lg bg-red-900/20 border border-red-700/30 p-2 text-xs text-red-300">{error}</div>
+        <div className="rounded-lg bg-red-900/20 border border-red-700/30 p-3 text-xs text-red-300 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {error}
+        </div>
       )}
       {success && (
-        <div className="rounded-lg bg-green-900/20 border border-green-700/30 p-2 text-xs text-green-300">{success}</div>
+        <div className="rounded-lg bg-green-900/20 border border-green-700/30 p-3 text-xs text-green-300 flex items-center gap-2">
+          <Package className="w-4 h-4 shrink-0" />
+          {success}
+        </div>
       )}
 
-      {/* ── Type & Source toggles ───────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Type toggle */}
-        <div className="flex rounded-lg border border-slate-700/40 overflow-hidden text-xs">
-          <button
-            onClick={() => setType("plugin")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 font-semibold transition ${
-              type === "plugin"
-                ? "bg-neon-500/20 text-neon-200 border-r border-slate-700/40"
-                : "text-slate-400 hover:text-slate-200 border-r border-slate-700/40"
-            }`}
-          >
-            <Puzzle className="h-3.5 w-3.5" /> Plugins
-          </button>
-          <button
-            onClick={() => setType("mod")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 font-semibold transition ${
-              type === "mod"
-                ? "bg-neon-500/20 text-neon-200"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <Blocks className="h-3.5 w-3.5" /> Mods
-          </button>
+      {/* Project Type Tabs */}
+      <div>
+        <h3 className="text-sm font-semibold text-slate-300 mb-3">Content Type</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          {PROJECT_TYPES.map((pt) => {
+            const Icon = pt.icon
+            return (
+              <button
+                key={pt.id}
+                onClick={() => setType(pt.id)}
+                className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all ${
+                  type === pt.id
+                    ? "border-neon-500/50 bg-neon-500/10 text-neon-200"
+                    : "border-slate-700/40 bg-slate-900/20 text-slate-400 hover:border-slate-600 hover:text-slate-300"
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="text-xs font-medium">{pt.label}</span>
+              </button>
+            )
+          })}
         </div>
+      </div>
 
-        {/* Source toggle */}
+      {/* Source Filter */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-slate-400">Source:</span>
         <div className="flex rounded-lg border border-slate-700/40 overflow-hidden text-xs">
           <button
             onClick={() => setSource("all")}
@@ -175,18 +227,16 @@ export default function PluginsTab({ serverId }) {
         </div>
       </div>
 
-      {/* ── Search ──────────────────────────────────────────────────────── */}
+      {/* Search */}
       <div>
         <form onSubmit={handleSearch} className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600" />
             <input
-              id="plugin-search"
-              name="q"
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={`Search ${type === "mod" ? "mods" : "plugins"} (e.g. ${type === "mod" ? "Sodium, OptiFine" : "EssentialsX, Vault"})…`}
+              placeholder={`Search ${currentTypeConfig?.label.toLowerCase() || "content"}...`}
               className="w-full rounded-lg border border-slate-700/40 bg-ink-950 py-2 pl-9 pr-4 text-sm text-slate-200 placeholder:text-slate-600 focus:border-neon-500/50 focus:outline-none"
             />
           </div>
@@ -200,79 +250,103 @@ export default function PluginsTab({ serverId }) {
           </button>
         </form>
 
+        {/* Results */}
         {results.length > 0 && (
-          <div className="mt-3 divide-y divide-slate-800/40 rounded-lg border border-slate-800/40 max-h-[340px] overflow-y-auto">
-            {results.map((p) => {
-              const key = p.source + "-" + (p.slug || p.id)
-              return (
-                <div key={key} className="flex items-center gap-3 px-3 py-2.5">
-                  {p.icon_url ? (
-                    <img src={p.icon_url} alt="" className="h-8 w-8 rounded-md shrink-0 bg-slate-800" />
-                  ) : (
-                    <div className="h-8 w-8 rounded-md bg-slate-800 flex items-center justify-center shrink-0">
-                      <Package className="h-4 w-4 text-slate-600" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-slate-200 truncate">{p.title}</p>
-                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase border ${SOURCE_COLORS[p.source]}`}>
-                        {p.source === "modrinth" ? "MR" : "CF"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 truncate">{p.description}</p>
-                  </div>
-                  <span className="text-xs text-slate-600 shrink-0">{(p.downloads || 0).toLocaleString()} DL</span>
-                  <button
-                    onClick={() => handleInstall(p)}
-                    disabled={!!installing}
-                    className="flex items-center gap-1 rounded-lg border border-green-700/40 bg-green-900/20 px-2.5 py-1 text-xs font-semibold text-green-300 hover:bg-green-900/30 disabled:opacity-50 shrink-0"
+          <div className="mt-4">
+            <h3 className="text-sm font-semibold text-slate-200 mb-3">
+              {search.length >= 2 ? "Search Results" : `Featured ${currentTypeConfig?.label}`}
+            </h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {results.map((p) => {
+                const key = p.source + "-" + (p.slug || p.id)
+                const Icon = currentTypeConfig?.icon || Package
+                return (
+                  <div
+                    key={key}
+                    onClick={() => handleSelectProject(p)}
+                    className="group cursor-pointer rounded-lg border border-slate-800/40 bg-slate-900/20 p-3 hover:border-slate-700/60 hover:bg-slate-900/40 transition-all"
                   >
-                    {installing === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                    Install
-                  </button>
-                </div>
-              )
-            })}
+                    <div className="flex gap-3">
+                      {p.icon_url ? (
+                        <img src={p.icon_url} alt="" className="h-12 w-12 rounded-md shrink-0 bg-slate-800" />
+                      ) : (
+                        <div className="h-12 w-12 rounded-md bg-slate-800 flex items-center justify-center shrink-0">
+                          <Icon className="h-6 w-6 text-slate-600" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <p className="text-sm font-semibold text-slate-200 truncate group-hover:text-neon-200 transition">{p.title}</p>
+                          <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase border shrink-0 ${SOURCE_COLORS[p.source]}`}>
+                            {p.source === "modrinth" ? "MR" : "CF"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 line-clamp-2 mb-2">{p.description}</p>
+                        <div className="flex items-center text-xs text-slate-600">
+                          <Download className="h-3 w-3 mr-1" />
+                          {(p.downloads || 0).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>
 
-      {/* ── Installed list ──────────────────────────────────────────────── */}
-      <div>
-        <h3 className="text-sm font-semibold text-slate-200 mb-2">
-          Installed {type === "mod" ? "Mods" : "Plugins"}
-        </h3>
-        {loadingInstalled ? (
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
-          </div>
-        ) : installedList.length === 0 ? (
-          <p className="py-4 text-center text-xs text-slate-500">
-            No {type === "mod" ? "mods" : "plugins"} installed yet.
-          </p>
-        ) : (
-          <div className="divide-y divide-slate-800/40 rounded-lg border border-slate-800/40">
-            {installedList.map((p) => (
-              <div key={p.name} className="flex items-center justify-between px-3 py-2 group">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Package className="h-4 w-4 text-slate-500 shrink-0" />
-                  <span className="text-sm text-slate-300 truncate">{p.name}</span>
-                  <span className="text-xs text-slate-600">{(p.size / 1024).toFixed(0)} KB</span>
+      {/* Installed List */}
+      {(type === "plugin" || type === "mod") && (
+        <div>
+          <h3 className="text-sm font-semibold text-slate-200 mb-3">
+            Installed {type === "mod" ? "Mods" : "Plugins"}
+          </h3>
+          {loadingInstalled ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
+            </div>
+          ) : installedList.length === 0 ? (
+            <p className="py-6 text-center text-sm text-slate-500">
+              No {type === "mod" ? "mods" : "plugins"} installed yet.
+            </p>
+          ) : (
+            <div className="divide-y divide-slate-800/40 rounded-lg border border-slate-800/40">
+              {installedList.map((p) => (
+                <div key={p.name} className="flex items-center justify-between px-4 py-3 group">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Package className="h-4 w-4 text-slate-500 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm text-slate-300 truncate">{p.name}</p>
+                      <p className="text-xs text-slate-600">{(p.size / 1024).toFixed(0)} KB</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(p.name, type)}
+                    disabled={!!deleting}
+                    className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 rounded px-3 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-900/20 transition"
+                  >
+                    {deleting === p.name ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    Remove
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleDelete(p.name, type)}
-                  disabled={!!deleting}
-                  className="opacity-0 group-hover:opacity-100 flex items-center gap-1 rounded px-2 py-1 text-xs text-red-400 hover:text-red-300 transition"
-                >
-                  {deleting === p.name ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Version Selection Modal */}
+      <VersionModal
+        isOpen={versionModalOpen}
+        onClose={() => {
+          setVersionModalOpen(false)
+          setSelectedProject(null)
+        }}
+        project={selectedProject}
+        serverId={serverId}
+        onInstall={handleInstallFromModal}
+      />
     </div>
   )
 }

@@ -22,7 +22,9 @@ const coinPlanSchema = z.object({
     duration_days: z.number().int().positive(),
     limited_stock: z.boolean().default(false),
     stock_amount: z.number().int().positive().nullable().optional(),
-    one_time_purchase: z.boolean().default(false)
+    one_time_purchase: z.boolean().default(false),
+    backup_count: z.number().int().min(0).default(0),
+    extra_ports: z.number().int().min(0).default(0)
   })
 })
 
@@ -37,7 +39,9 @@ const realPlanSchema = z.object({
     duration_type: z.enum(["weekly", "monthly", "custom", "days", "lifetime"]),
     duration_days: z.number().int().positive(),
     limited_stock: z.boolean().default(false),
-    stock_amount: z.number().int().positive().nullable().optional()
+    stock_amount: z.number().int().positive().nullable().optional(),
+    backup_count: z.number().int().min(0).default(0),
+    extra_ports: z.number().int().min(0).default(0)
   })
 })
 
@@ -64,6 +68,12 @@ const flagSchema = z.object({
   })
 })
 
+const roleSchema = z.object({
+  body: z.object({
+    role: z.enum(['user', 'admin'])
+  })
+})
+
 router.get("/users", async (req, res, next) => {
   try {
     const users = await query(
@@ -82,6 +92,34 @@ router.patch("/users/:id/flag", validate(flagSchema), async (req, res, next) => 
       [req.body.flagged ? 1 : 0, req.params.id]
     )
     res.json({ status: "ok" })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.patch("/users/:id/role", validate(roleSchema), async (req, res, next) => {
+  try {
+    const userId = Number(req.params.id)
+    
+    // Prevent admins from demoting themselves
+    if (userId === req.user.id && req.body.role !== 'admin') {
+      return res.status(400).json({ message: "Cannot change your own role" })
+    }
+    
+    const user = await getOne("SELECT id, email, role FROM users WHERE id = ?", [userId])
+    if (!user) {
+      return res.status(404).json({ error: "User not found" })
+    }
+    
+    await runSync(
+      "UPDATE users SET role = ? WHERE id = ?",
+      [req.body.role, userId]
+    )
+    
+    res.json({ 
+      status: "ok", 
+      message: `User ${user.email} role changed from ${user.role} to ${req.body.role}` 
+    })
   } catch (error) {
     next(error)
   }
@@ -140,7 +178,7 @@ router.delete("/users/:id", async (req, res, next) => {
 router.post("/plans/coin", validate(coinPlanSchema), async (req, res, next) => {
   try {
     const info = await runSync(
-      "INSERT INTO plans_coin (name, icon, ram, cpu, storage, coin_price, duration_type, duration_days, limited_stock, stock_amount, one_time_purchase) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO plans_coin (name, icon, ram, cpu, storage, coin_price, duration_type, duration_days, limited_stock, stock_amount, one_time_purchase, backup_count, extra_ports) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
         req.body.name,
         req.body.icon || "Package",
@@ -152,7 +190,9 @@ router.post("/plans/coin", validate(coinPlanSchema), async (req, res, next) => {
         req.body.duration_days,
         req.body.limited_stock ? 1 : 0,
         req.body.stock_amount || null,
-        req.body.one_time_purchase ? 1 : 0
+        req.body.one_time_purchase ? 1 : 0,
+        req.body.backup_count || 0,
+        req.body.extra_ports || 0
       ]
     )
     console.log("[ADMIN] Coin plan created with ID:", info.lastID)
@@ -166,7 +206,7 @@ router.post("/plans/coin", validate(coinPlanSchema), async (req, res, next) => {
 router.post("/plans/real", validate(realPlanSchema), async (req, res, next) => {
   try {
     const info = await runSync(
-      "INSERT INTO plans_real (name, icon, ram, cpu, storage, price, duration_type, duration_days, limited_stock, stock_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO plans_real (name, icon, ram, cpu, storage, price, duration_type, duration_days, limited_stock, stock_amount, backup_count, extra_ports) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
         req.body.name,
         req.body.icon || "Server",
@@ -177,7 +217,9 @@ router.post("/plans/real", validate(realPlanSchema), async (req, res, next) => {
         req.body.duration_type,
         req.body.duration_days,
         req.body.limited_stock ? 1 : 0,
-        req.body.stock_amount || null
+        req.body.stock_amount || null,
+        req.body.backup_count || 0,
+        req.body.extra_ports || 0
       ]
     )
     res.status(201).json({ id: info.lastID })
@@ -189,7 +231,7 @@ router.post("/plans/real", validate(realPlanSchema), async (req, res, next) => {
 router.put("/plans/coin/:id", validate(coinPlanSchema), async (req, res, next) => {
   try {
     await runSync(
-      "UPDATE plans_coin SET name = ?, icon = ?, ram = ?, cpu = ?, storage = ?, coin_price = ?, duration_type = ?, duration_days = ?, limited_stock = ?, stock_amount = ?, one_time_purchase = ? WHERE id = ?",
+      "UPDATE plans_coin SET name = ?, icon = ?, ram = ?, cpu = ?, storage = ?, coin_price = ?, duration_type = ?, duration_days = ?, limited_stock = ?, stock_amount = ?, one_time_purchase = ?, backup_count = ?, extra_ports = ? WHERE id = ?",
       [
         req.body.name,
         req.body.icon || "Package",
@@ -202,6 +244,8 @@ router.put("/plans/coin/:id", validate(coinPlanSchema), async (req, res, next) =
         req.body.limited_stock ? 1 : 0,
         req.body.stock_amount || null,
         req.body.one_time_purchase ? 1 : 0,
+        req.body.backup_count || 0,
+        req.body.extra_ports || 0,
         req.params.id
       ]
     )
@@ -214,7 +258,7 @@ router.put("/plans/coin/:id", validate(coinPlanSchema), async (req, res, next) =
 router.put("/plans/real/:id", validate(realPlanSchema), async (req, res, next) => {
   try {
     await runSync(
-      "UPDATE plans_real SET name = ?, icon = ?, ram = ?, cpu = ?, storage = ?, price = ?, duration_type = ?, duration_days = ?, limited_stock = ?, stock_amount = ? WHERE id = ?",
+      "UPDATE plans_real SET name = ?, icon = ?, ram = ?, cpu = ?, storage = ?, price = ?, duration_type = ?, duration_days = ?, limited_stock = ?, stock_amount = ?, backup_count = ?, extra_ports = ? WHERE id = ?",
       [
         req.body.name,
         req.body.icon || "Server",
@@ -226,6 +270,8 @@ router.put("/plans/real/:id", validate(realPlanSchema), async (req, res, next) =
         req.body.duration_days || null,
         req.body.limited_stock ? 1 : 0,
         req.body.stock_amount || null,
+        req.body.backup_count || 0,
+        req.body.extra_ports || 0,
         req.params.id
       ]
     )

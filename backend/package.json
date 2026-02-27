@@ -12,7 +12,9 @@
     "migrate-tickets": "node scripts/migrateTickets.js",
     "upgrade-tickets": "node scripts/upgradeTickets.js",
     "migrate-frontpage": "node scripts/migrateFrontpage.js",
-    "create-admin": "node scripts/createAdmin.js",
+    "migrate-oauth": "node scripts/migrateOAuthAndPlans.js",
+    "create-admin": "echo '⚠️  DEPRECATED: Use set-admin instead (OAuth-only auth)' && node scripts/createAdmin.js",
+    "set-admin": "node scripts/setAdmin.js",
     "test-pterodactyl": "node scripts/testPterodactyl.js"
   },
   "dependencies": {
@@ -23,12 +25,16 @@
     "dotenv": "^16.0.0",
     "express": "^4.18.0",
     "express-rate-limit": "^7.0.0",
+    "express-session": "^1.19.0",
     "form-data": "^4.0.0",
     "helmet": "^7.0.0",
     "jsonwebtoken": "^9.0.0",
     "morgan": "^1.10.0",
     "multer": "^2.0.0",
     "node-cron": "^3.0.3",
+    "passport": "^0.7.0",
+    "passport-discord": "^0.1.4",
+    "passport-google-oauth20": "^2.0.0",
     "socket.io": "^4.8.3",
     "ws": "^8.19.0",
     "zod": "^3.22.0"

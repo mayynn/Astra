@@ -85,6 +85,8 @@ CONFIG_VARS=(
   DOMAIN SSL_EMAIL APP_DIR APP_PORT
   JWT_SECRET JWT_EXPIRES
   DB_PATH UPLOAD_DIR
+  GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET GOOGLE_CALLBACK_URL
+  DISCORD_CLIENT_ID DISCORD_CLIENT_SECRET DISCORD_CALLBACK_URL
   PTERO_URL PTERO_KEY PTERO_EGG PTERO_IMAGE PTERO_STARTUP PTERO_ENV
   DISCORD_WEBHOOK DISCORD_SUPPORT_WEBHOOK
   UPI_ID_VAL UPI_NAME_VAL
@@ -152,18 +154,50 @@ if [[ ${#JWT_SECRET} -lt 32 ]]; then
   error "JWT_SECRET must be at least 32 characters."
 fi
 
+# Generate SESSION_SECRET for OAuth
+GEN_SESSION_SECRET=$(openssl rand -hex 32 2>/dev/null || tr -dc 'a-zA-Z0-9' </dev/urandom | head -c 64)
+SESSION_SECRET="$GEN_SESSION_SECRET"
+echo -e "  ${CYAN}Auto-generated SESSION_SECRET: ${SESSION_SECRET}${RESET}"
+
 # ─────────────────────────────────────────────────────────────────────────────
-#  SECTION 3 — Database & Storage
+#  SECTION 3 — OAuth Authentication (Google & Discord)
 # ─────────────────────────────────────────────────────────────────────────────
-header "3 / 8  Database & Storage"
+header "3 / 9  OAuth Authentication"
+echo -e "  ${CYAN}Authentication is OAuth-only (Google & Discord).${RESET}"
+echo -e "  ${CYAN}Email/password login has been disabled for security.${RESET}"
+echo ""
+echo -e "  ${YELLOW}Google OAuth Setup:${RESET}"
+echo -e "  1. Go to: https://console.cloud.google.com/apis/credentials"
+echo -e "  2. Create OAuth 2.0 Client ID (Web application)"
+echo -e "  3. Add authorized redirect URI: https://${DOMAIN}/api/auth/google/callback"
+echo ""
+ask GOOGLE_CLIENT_ID     "Google OAuth Client ID"
+ask GOOGLE_CLIENT_SECRET "Google OAuth Client Secret"
+GOOGLE_CALLBACK_URL="https://${DOMAIN}/api/auth/google/callback"
+echo -e "  ${GREEN}Google callback URL: ${GOOGLE_CALLBACK_URL}${RESET}"
+echo ""
+echo -e "  ${YELLOW}Discord OAuth Setup:${RESET}"
+echo -e "  1. Go to: https://discord.com/developers/applications"
+echo -e "  2. Create/select application → OAuth2 → Add Redirect"
+echo -e "  3. Add redirect URI: https://${DOMAIN}/api/auth/discord/callback"
+echo ""
+ask DISCORD_CLIENT_ID     "Discord OAuth Client ID"
+ask DISCORD_CLIENT_SECRET "Discord OAuth Client Secret"
+DISCORD_CALLBACK_URL="https://${DOMAIN}/api/auth/discord/callback"
+echo -e "  ${GREEN}Discord callback URL: ${DISCORD_CALLBACK_URL}${RESET}"
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  SECTION 4 — Database & Storage
+# ─────────────────────────────────────────────────────────────────────────────
+header "4 / 9  Database & Storage"
 
 ask DB_PATH     "SQLite database path" "${APP_DIR}/backend/data/astranodes.sqlite"
 ask UPLOAD_DIR  "Uploads directory"    "${APP_DIR}/backend/uploads"
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  SECTION 4 — Pterodactyl
+#  SECTION 5 — Pterodactyl
 # ─────────────────────────────────────────────────────────────────────────────
-header "4 / 8  Pterodactyl Panel"
+header "5 / 9  Pterodactyl Panel"
 
 ask     PTERO_URL    "Pterodactyl panel URL (e.g. https://panel.example.com)"
 ask     PTERO_KEY    "Pterodactyl admin API key"
@@ -182,26 +216,26 @@ echo -e "  ${CYAN}Environment variables for the Pterodactyl egg (JSON):${RESET}"
 ask     PTERO_ENV     "Pterodactyl ENV JSON" '{"MINECRAFT_VERSION":"1.20.1","SERVER_JARFILE":"server.jar","BUILD_NUMBER":"latest"}'
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  SECTION 5 — Discord
+#  SECTION 6 — Discord
 # ─────────────────────────────────────────────────────────────────────────────
-header "5 / 8  Discord Webhooks"
+header "6 / 9  Discord Webhooks"
 
 ask          DISCORD_WEBHOOK         "Discord webhook URL (UTR notifications)"
 ask_optional DISCORD_SUPPORT_WEBHOOK "Discord support channel webhook (optional)" ""
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  SECTION 6 — UPI Payment
+#  SECTION 7 — UPI Payment
 # ─────────────────────────────────────────────────────────────────────────────
-header "6 / 8  UPI Payment Details"
+header "7 / 9  UPI Payment Details"
 echo "  These are shown on the Billing page so users know where to send money."
 
 ask_optional UPI_ID_VAL   "UPI ID (e.g. yourname@upi)"          ""
 ask_optional UPI_NAME_VAL "UPI registered name / business name"  ""
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  SECTION 7 — Adsterra Ads
+#  SECTION 8 — Adsterra Ads
 # ─────────────────────────────────────────────────────────────────────────────
-header "7 / 8  Adsterra Monetisation"
+header "8 / 9  Adsterra Monetisation"
 echo -e "  ${CYAN}Leave all blank to disable ad serving.${RESET}"
 echo ""
 
@@ -355,10 +389,20 @@ cat > "$BACKEND_ENV" <<EOF
 NODE_ENV=production
 PORT=${APP_PORT}
 FRONTEND_URL=https://${DOMAIN}
+OAUTH_CALLBACK_URL=https://${DOMAIN}
 
 # Auth
 JWT_SECRET=${JWT_SECRET}
 JWT_EXPIRES_IN=${JWT_EXPIRES}
+SESSION_SECRET=${SESSION_SECRET}
+
+# OAuth (Google & Discord)
+GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+GOOGLE_CALLBACK_URL=${GOOGLE_CALLBACK_URL}
+DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
+DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
+DISCORD_CALLBACK_URL=${DISCORD_CALLBACK_URL}
 
 # Database & storage
 DB_PATH=${DB_PATH}
@@ -441,6 +485,7 @@ MIGRATE_SCRIPTS=(
   migrate-tickets
   upgrade-tickets
   migrate-frontpage
+  migrate-oauth
 )
 
 for script in "${MIGRATE_SCRIPTS[@]}"; do
@@ -663,23 +708,22 @@ success "PM2 started and saved"
 systemctl reload nginx
 
 # =============================================================================
-#  CREATE ADMIN ACCOUNT
+#  ADMIN ACCOUNT SETUP
 # =============================================================================
-header "Admin Account"
+header "Admin Account Setup"
 
 echo ""
-echo -e "  ${CYAN}An admin account is required to access the dashboard.${RESET}"
-ask_yn CREATE_ADMIN "Create the first admin account now?" "y"
-
-if [[ "$CREATE_ADMIN" == "yes" ]]; then
-  info "Running create-admin script..."
-  npm --prefix "${APP_DIR}/backend" run create-admin
-  success "Admin account created"
-else
-  echo ""
-  echo -e "  ${YELLOW}Skipped. Run this later to create an admin:${RESET}"
-  echo -e "  ${BOLD}npm --prefix ${APP_DIR}/backend run create-admin${RESET}"
-fi
+echo -e "  ${CYAN}Authentication is OAuth-only (Google & Discord).${RESET}"
+echo -e "  ${CYAN}To create the first admin, follow these steps:${RESET}"
+echo ""
+echo -e "  ${YELLOW}Steps to promote your first admin:${RESET}"
+echo -e "  1. Login via the web app using Google or Discord OAuth"
+echo -e "  2. Run: ${BOLD}cd ${APP_DIR}/backend && npm run set-admin your-email@example.com${RESET}"
+echo -e "  3. Log out and back in to access the Admin Panel"
+echo ""
+echo -e "  ${CYAN}Once you're an admin, you can promote other users from the Admin Panel.${RESET}"
+echo -e "  ${CYAN}See ADMIN_SETUP.md for detailed instructions.${RESET}"
+echo ""
 
 # =============================================================================
 #  DONE
@@ -699,8 +743,14 @@ echo -e "  ${CYAN}Node provisioning:${RESET} Fully automatic — all panel nodes
 echo -e "  are evaluated at each server purchase for memory, disk,"
 echo -e "  and free allocations. No manual node ID is required."
 echo ""
+echo -e "  ${YELLOW}Next step:${RESET} Create your first admin account"
+echo -e "   1. Visit https://${DOMAIN} and login with Google or Discord"
+echo -e "   2. Run: ${BOLD}cd ${APP_DIR}/backend && npm run set-admin <your-email>${RESET}"
+echo -e "   3. Refresh the page to access Admin Panel"
+echo ""
 echo -e "  ${CYAN}Useful commands:${RESET}"
 echo -e "   pm2 restart astranodes-api           # restart API"
 echo -e "   pm2 logs astranodes-api --lines 100  # recent logs"
+echo -e "   npm run set-admin <email>            # promote user to admin"
 echo -e "   git -C ${APP_DIR} pull && pm2 restart astranodes-api  # update"
 echo ""

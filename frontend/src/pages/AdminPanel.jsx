@@ -57,6 +57,7 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [flagging, setFlagging] = useState({})
+  const [changingRole, setChangingRole] = useState({})
   const [approving, setApproving] = useState({})
   const [suspending, setSuspending] = useState({})
   const [deleting, setDeleting] = useState({})
@@ -127,6 +128,39 @@ export default function AdminPanel() {
     } finally {
       setFlagging((prev) => ({ ...prev, [userId]: false }))
     }
+  }
+
+  const handleChangeRole = async (userId, currentRole, userEmail) => {
+    const newRole = currentRole === 'admin' ? 'user' : 'admin'
+    const action = newRole === 'admin' ? 'Promote' : 'Demote'
+    
+    openConfirm({
+      title: `${action} User`,
+      message: `${action} "${userEmail}" to ${newRole}?`,
+      detail: newRole === 'admin' 
+        ? "Admin users have full access to the admin panel and can manage all resources."
+        : "This will remove admin privileges from this user.",
+      confirmLabel: `${action} to ${newRole.charAt(0).toUpperCase() + newRole.slice(1)}`,
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, loading: true }))
+        setChangingRole((prev) => ({ ...prev, [userId]: true }))
+        try {
+          const token = localStorage.getItem("token")
+          await api.changeUserRole(token, userId, newRole)
+          
+          // Refresh users
+          const data = await api.getUsers(token)
+          setUsers(data || [])
+          showSuccess(`User "${userEmail}" ${action.toLowerCase()}d to ${newRole}`)
+          closeConfirm()
+        } catch (err) {
+          showError(err.message || `Failed to ${action.toLowerCase()} user`)
+          setConfirmModal((prev) => ({ ...prev, loading: false }))
+        } finally {
+          setChangingRole((prev) => ({ ...prev, [userId]: false }))
+        }
+      }
+    })
   }
 
   const handleDeleteUser = async (userId, userEmail) => {
@@ -471,6 +505,17 @@ export default function AdminPanel() {
                 <div className="flex flex-wrap items-center gap-2">
                   {user.flagged && <Badge label="Flagged" tone="suspended" />}
                   {user.role === "admin" && <Badge label="Admin" tone="approved" />}
+                  <button
+                    onClick={() => handleChangeRole(user.id, user.role, user.email)}
+                    disabled={changingRole[user.id]}
+                    className={`text-xs px-2 py-1 rounded ${
+                      user.role === 'admin' 
+                        ? 'bg-slate-800/60 text-slate-300 hover:bg-slate-800' 
+                        : 'bg-blue-900/20 text-blue-300 hover:bg-blue-900/40'
+                    } disabled:opacity-60 disabled:cursor-not-allowed`}
+                  >
+                    {changingRole[user.id] ? "..." : user.role === 'admin' ? 'Demote' : 'Promote'}
+                  </button>
                   <button
                     onClick={() => handleFlagUser(user.id, user.flagged)}
                     disabled={flagging[user.id]}

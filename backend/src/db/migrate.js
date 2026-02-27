@@ -105,6 +105,22 @@ export default async function migrate() {
       // Column already exists — safe to ignore
     }
 
+    // Add software column to servers if not present
+    try {
+      await runSync("ALTER TABLE servers ADD COLUMN software TEXT NOT NULL DEFAULT 'minecraft'")
+      console.log("[Migration] ✓ Added software column to servers")
+    } catch {
+      // Column already exists — safe to ignore
+    }
+
+    // Add egg_id column to servers if not present
+    try {
+      await runSync("ALTER TABLE servers ADD COLUMN egg_id INTEGER")
+      console.log("[Migration] ✓ Added egg_id column to servers")
+    } catch {
+      // Column already exists — safe to ignore
+    }
+
     // Seed default site_content sections
     console.log("[Migration] Seeding default site_content...")
     for (const section of DEFAULT_SITE_CONTENT) {

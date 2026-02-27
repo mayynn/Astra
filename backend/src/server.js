@@ -3,6 +3,7 @@ import app from "./app.js"
 import { env } from "./config/env.js"
 import migrate from "./db/migrate.js"
 import { startExpiryCron } from "./cron/expiryCron.js"
+import { initBackupCron } from "./cron/backupCron.js"
 import { initSocket } from "./utils/socket.js"
 
 async function startup() {
@@ -31,6 +32,7 @@ async function startup() {
 
     console.log("[Server] Starting cron jobs...")
     startExpiryCron()
+    initBackupCron()
     console.log("[Server] ✓ Cron jobs started")
   } catch (error) {
     console.error("[Server] ✗ Failed to start server:", error)
