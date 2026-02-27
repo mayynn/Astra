@@ -64,8 +64,8 @@ export function AppUIProvider({ children }) {
   const refreshSiteSettings = useCallback(async () => {
     try {
       const settings = await api.getSiteSettings()
-      setSiteSettings(settings)
-      return settings
+      if (settings) setSiteSettings(settings)
+      return settings ?? null
     } catch {
       return null
     }
