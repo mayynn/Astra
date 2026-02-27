@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import AdminNav from "../components/AdminNav.jsx"
 import SectionHeader from "../components/SectionHeader.jsx"
 import Badge from "../components/Badge.jsx"
 import ConfirmModal from "../components/ConfirmModal.jsx"
@@ -160,7 +161,9 @@ export default function AdminTicketDetail() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-dark-950">
+      <AdminNav />
+      <div className="max-w-5xl mx-auto p-6 space-y-6">
       <SectionHeader
         title={`Ticket #${ticket.id}`}
         subtitle={ticket.subject}
@@ -390,6 +393,7 @@ export default function AdminTicketDetail() {
         onConfirm={handleDelete}
         onClose={() => setDeleteConfirmOpen(false)}
       />
+      </div>
     </div>
   )
 }

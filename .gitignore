@@ -1,4 +1,5 @@
 node_modules/
+
 # Environment files - NEVER commit these
 .env
 .env.local
@@ -6,8 +7,9 @@ node_modules/
 .env.staging
 backend/.env
 frontend/.env
+frontend/.env.production.local
 
-# SQLite databases
+# SQLite databases - These will be created fresh on deployment
 *.sqlite
 *.sqlite3
 *.db
@@ -16,14 +18,18 @@ frontend/.env
 *.sqlite-shm
 *.sqlite-wal
 backend/data/
+data/
 
 # Backups
 *.bak
 *.db.bak
+*.sqlite.bak
 
-# Upload files
+# Upload files - User-uploaded content
 backend/uploads/
+backend/public/uploads/
 uploads/
+public/uploads/
 
 # Build artifacts
 dist/
@@ -32,7 +38,15 @@ build/
 # Logs
 *.log
 logs/
+/var/log/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# PM2
+.pm2/
+pids/
+*.pid
+*.seed
+*.pid.lock

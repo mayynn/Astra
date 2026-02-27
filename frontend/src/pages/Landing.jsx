@@ -24,23 +24,23 @@ function DynamicIcon({ name, className }) {
 // ─── Default fallback content (shown while loading) ─────────────────────────
 const DEFAULTS = {
   hero: {
-    title: "Hosting crafted for Minecraft empires.",
-    subtitle: "Launch servers in seconds, keep renewals automatic, and protect revenue with enterprise-grade abuse prevention.",
-    primaryButtonText: "Launch Dashboard",
+    title: "Powerful Minecraft hosting made simple",
+    subtitle: "Deploy high-performance game servers in seconds with automatic renewals, flexible billing, and enterprise-grade security.",
+    primaryButtonText: "Get Started Free",
     primaryButtonLink: "/register",
     secondaryButtonText: "View Plans",
     secondaryButtonLink: "/plans",
     backgroundImage: ""
   },
   features: [
-    { title: "Automated Renewal", description: "Coins or balance renewals execute automatically with 12h grace protection.", icon: "Zap" },
-    { title: "Anti-Abuse Core", description: "IP-based coupon protection, flagging, and rate-limited endpoints.", icon: "ShieldCheck" },
-    { title: "Coin Economy", description: "AFK earning, coin plans, and live usage insights in one dashboard.", icon: "Coins" },
-    { title: "Pterodactyl Ready", description: "Server lifecycle actions handled securely via Admin API.", icon: "Server" }
+    { title: "Auto-Renewal System", description: "Never worry about server downtime. Our intelligent renewal system keeps your servers running with a 12-hour grace period.", icon: "Zap" },
+    { title: "Advanced Protection", description: "Enterprise-grade security with IP-based fraud detection, abuse prevention, and rate limiting built-in.", icon: "ShieldCheck" },
+    { title: "Flexible Billing", description: "Pay with coins or balance. Earn coins through AFK time and track your spending in real-time.", icon: "Coins" },
+    { title: "Full Server Control", description: "Complete server management powered by Pterodactyl Panel with secure API integration.", icon: "Server" }
   ],
   about: {
-    heading: "Ready for production-grade hosting?",
-    description: "Spin up a secure dashboard and keep every server in compliance."
+    heading: "Ready to scale your Minecraft network?",
+    description: "Join thousands of server owners who trust us with their hosting needs."
   },
   stats: { activeServers: "500+", totalUsers: "1,200+", uptime: "99.9%" },
   footer: { text: "© 2026 AstraNodes. All rights reserved.", links: ["Privacy", "Terms", "Status"] }
@@ -131,31 +131,30 @@ export default function Landing() {
   const footer = resolve("footer")
 
   return (
-    <div className="min-h-screen bg-ink-950 text-slate-100">
+    <div className="min-h-screen bg-gradient-to-b from-dark-950 via-dark-900 to-dark-950">
       <div className="relative overflow-hidden">
         {hero.backgroundImage && (
           <div
-            className="absolute inset-0 bg-cover bg-center opacity-10 pointer-events-none"
+            className="absolute inset-0 bg-cover bg-center opacity-5 pointer-events-none"
             style={{ backgroundImage: `url(${hero.backgroundImage})` }}
           />
         )}
-        <div className="absolute inset-0 grid-noise opacity-30 pointer-events-none" />
-
-        <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-16 px-6 py-10">
+        
+        <div className="mx-auto flex min-h-screen max-w-7xl flex-col gap-20 px-6 py-8">
 
           {/* ── Header ── */}
-          <header className="mb-0">
+          <header className="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/80 border-b border-white/5 -mx-6 px-6 py-4">
             <div className="flex items-center justify-between gap-4">
               <Logo size="lg" />
-              <nav className="hidden md:flex items-center gap-1 text-sm text-slate-400">
+              <nav className="hidden md:flex items-center gap-1 text-sm">
                 {NAV_LINKS.map(({ to, label }) => (
                   <Link
                     key={to}
                     to={to}
-                    className={`px-3 py-1.5 rounded-lg transition-colors ${
+                    className={`px-4 py-2 rounded-lg transition-all font-medium ${
                       pathname === to
-                        ? "text-slate-100 bg-slate-800/60"
-                        : "hover:text-slate-200 hover:bg-slate-800/30"
+                        ? "text-white bg-white/10"
+                        : "text-gray-400 hover:text-white hover:bg-white/5"
                     }`}
                   >
                     {label}
@@ -164,13 +163,15 @@ export default function Landing() {
               </nav>
               <div className="hidden md:flex items-center gap-3 text-sm">
                 {isLoggedIn ? (
-                  <Link to="/dashboard" className="button-3d rounded-xl bg-neon-500/20 px-4 py-2 font-semibold text-neon-200">
-                    My Dashboard
+                  <Link to="/dashboard" className="px-5 py-2.5 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-semibold transition-all">
+                    Dashboard
                   </Link>
                 ) : (
                   <>
-                    <Link to="/login" className="text-slate-400 hover:text-slate-200 transition-colors px-3 py-1.5">Login</Link>
-                    <Link to={hero.primaryButtonLink || "/register"} className="button-3d rounded-xl bg-neon-500/20 px-4 py-2 font-semibold text-neon-200">
+                    <Link to="/login" className="px-4 py-2 text-gray-400 hover:text-white transition-colors font-medium">
+                      Sign In
+                    </Link>
+                    <Link to={hero.primaryButtonLink || "/register"} className="px-5 py-2.5 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-semibold transition-all">
                       Get Started
                     </Link>
                   </>
@@ -178,41 +179,41 @@ export default function Landing() {
               </div>
               <button
                 onClick={() => setMobileOpen((o) => !o)}
-                className="md:hidden p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors"
+                className="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
                 aria-label="Toggle menu"
               >
                 {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </button>
             </div>
             {mobileOpen && (
-              <div className="md:hidden mt-3 rounded-2xl border border-slate-700/40 bg-ink-900/95 backdrop-blur p-4 shadow-xl">
+              <div className="md:hidden mt-4 rounded-2xl border border-white/10 bg-dark-800/95 backdrop-blur-xl p-4 shadow-2xl">
                 <nav className="flex flex-col gap-1 mb-4">
                   {NAV_LINKS.map(({ to, label }) => (
                     <Link
                       key={to}
                       to={to}
                       onClick={() => setMobileOpen(false)}
-                      className={`px-4 py-2.5 rounded-xl text-sm transition-colors ${
+                      className={`px-4 py-3 rounded-xl text-sm transition-all font-medium ${
                         pathname === to
-                          ? "bg-slate-800/80 text-slate-100 font-medium"
-                          : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/40"
+                          ? "bg-white/10 text-white"
+                          : "text-gray-400 hover:text-white hover:bg-white/5"
                       }`}
                     >
                       {label}
                     </Link>
                   ))}
                 </nav>
-                <div className="border-t border-slate-800/60 pt-4 flex flex-col gap-2">
+                <div className="border-t border-white/10 pt-4 flex flex-col gap-2">
                   {isLoggedIn ? (
-                    <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="button-3d rounded-xl bg-neon-500/20 px-4 py-2.5 text-center text-sm font-semibold text-neon-200">
-                      My Dashboard
+                    <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="px-4 py-3 rounded-xl bg-primary-500 hover:bg-primary-600 text-center text-sm font-semibold text-white transition-all">
+                      Dashboard
                     </Link>
                   ) : (
                     <>
-                      <Link to="/login" onClick={() => setMobileOpen(false)} className="rounded-xl border border-slate-700/40 px-4 py-2.5 text-center text-sm text-slate-300 hover:text-slate-100 hover:bg-slate-800/40 transition-colors">
-                        Login
+                      <Link to="/login" onClick={() => setMobileOpen(false)} className="px-4 py-3 rounded-xl border border-white/10 text-center text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all font-medium">
+                        Sign In
                       </Link>
-                      <Link to={hero.primaryButtonLink || "/register"} onClick={() => setMobileOpen(false)} className="button-3d rounded-xl bg-neon-500/20 px-4 py-2.5 text-center text-sm font-semibold text-neon-200">
+                      <Link to={hero.primaryButtonLink || "/register"} onClick={() => setMobileOpen(false)} className="px-4 py-3 rounded-xl bg-primary-500 hover:bg-primary-600 text-center text-sm font-semibold text-white transition-all">
                         Get Started
                       </Link>
                     </>
@@ -223,81 +224,105 @@ export default function Landing() {
           </header>
 
           {/* ── Hero ── */}
-          <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="space-y-6">
-              <p className="text-xs uppercase tracking-[0.5em] text-slate-500">AstraNodes</p>
+          <div className="grid items-center gap-12 lg:grid-cols-2 pt-12 lg:pt-20">
+            <div className="space-y-8">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-500/10 border border-primary-500/20">
+                <Sparkles className="h-4 w-4 text-primary-400" />
+                <span className="text-sm font-medium text-primary-300">Trusted by 1,200+ server owners</span>
+              </div>
 
               {loadingContent ? (
-                <div className="space-y-3">
-                  <div className="h-10 w-3/4 animate-pulse rounded-xl bg-slate-800/60" />
-                  <div className="h-6 w-full animate-pulse rounded-xl bg-slate-800/40" />
-                  <div className="h-6 w-5/6 animate-pulse rounded-xl bg-slate-800/40" />
+                <div className="space-y-4">
+                  <div className="h-14 w-3/4 animate-pulse rounded-2xl bg-white/5" />
+                  <div className="h-6 w-full animate-pulse rounded-xl bg-white/5" />
+                  <div className="h-6 w-5/6 animate-pulse rounded-xl bg-white/5" />
                 </div>
               ) : (
                 <>
-                  <h1 className="text-4xl font-semibold leading-tight text-slate-100 sm:text-5xl">
+                  <h1 className="text-5xl lg:text-6xl font-bold text-white leading-tight">
                     {hero.title}
                   </h1>
-                  <p className="max-w-xl text-lg text-slate-400">{hero.subtitle}</p>
+                  <p className="text-xl text-gray-400 leading-relaxed max-w-2xl">
+                    {hero.subtitle}
+                  </p>
                 </>
               )}
 
               <div className="flex flex-wrap gap-4">
                 <Link
                   to={isLoggedIn ? "/dashboard" : (hero.primaryButtonLink || "/register")}
-                  className="button-3d inline-flex items-center gap-2 rounded-xl bg-neon-500/20 px-5 py-3 text-sm font-semibold text-neon-200"
+                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-primary-500 hover:bg-primary-600 text-white font-semibold text-lg transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary-500/25"
                 >
-                  {isLoggedIn ? "Go to Dashboard" : (hero.primaryButtonText || "Launch Dashboard")} <ArrowRight className="h-4 w-4" />
+                  {isLoggedIn ? "Go to Dashboard" : (hero.primaryButtonText || "Get Started Free")} 
+                  <ArrowRight className="h-5 w-5" />
                 </Link>
                 <Link
                   to={hero.secondaryButtonLink || "/plans"}
-                  className="button-3d inline-flex items-center gap-2 rounded-xl border border-slate-700/60 px-5 py-3 text-sm font-semibold text-slate-200"
+                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-lg transition-all"
                 >
                   {hero.secondaryButtonText || "View Plans"}
                 </Link>
               </div>
 
               {/* Stats row */}
-              <div className="grid grid-cols-2 gap-4 text-sm sm:flex sm:gap-6">
+              <div className="flex flex-wrap gap-8 pt-4">
                 <div>
-                  <p className="text-3xl font-semibold text-slate-100">{liveStats?.activeServers ?? stats.activeServers ?? "500+"}</p>
-                  <p className="text-slate-400">Active Servers</p>
+                  <p className="text-4xl font-bold text-white">{liveStats?.activeServers ?? stats.activeServers ?? "500+"}</p>
+                  <p className="text-sm text-gray-400 mt-1">Active servers</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-semibold text-slate-100">{liveStats?.totalUsers ?? stats.totalUsers ?? "1,200+"}</p>
-                  <p className="text-slate-400">Total Users</p>
+                  <p className="text-4xl font-bold text-white">{liveStats?.totalUsers ?? stats.totalUsers ?? "1,200+"}</p>
+                  <p className="text-sm text-gray-400 mt-1">Happy users</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-semibold text-slate-100">{stats.uptime || "99.9%"}</p>
-                  <p className="text-slate-400">Uptime</p>
+                  <p className="text-4xl font-bold text-white">{stats.uptime || "99.9%"}</p>
+                  <p className="text-sm text-gray-400 mt-1">Uptime</p>
                 </div>
               </div>
             </div>
 
             {/* Preview card */}
-            <div className="glass relative rounded-3xl border border-slate-700/40 p-8 shadow-soft">
-              <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-neon-500/20 blur-3xl" />
-              <div className="space-y-5">
-                <p className="text-xs uppercase tracking-[0.4em] text-slate-500">Live Snapshot</p>
-                <div className="space-y-4 rounded-2xl border border-slate-800/60 bg-ink-900/80 p-6">
-                  <p className="text-sm text-slate-400">Coins balance</p>
-                  <p className="text-4xl font-semibold text-neon-200">12,480</p>
-                  <div className="flex items-center justify-between text-sm text-slate-400">
-                    <span>AFK rate</span>
-                    <span className="text-slate-200">1 coin / min</span>
-                  </div>
-                </div>
-                <div className="grid gap-3 text-sm text-slate-300">
-                  {[
-                    ["Active servers", liveStats?.activeServers ?? stats.activeServers ?? "—"],
-                    ["Total users", liveStats?.totalUsers ?? stats.totalUsers ?? "—"],
-                    ["Uptime", stats.uptime || "99.9%"]
-                  ].map(([label, val]) => (
-                    <div key={label} className="flex items-center justify-between rounded-xl border border-slate-800/60 bg-ink-900/70 px-4 py-3">
-                      <span>{label}</span>
-                      <span className="font-semibold">{val}</span>
+            <div className="relative">
+              <div className="absolute -inset-4 bg-gradient-to-r from-primary-500/20 to-accent-500/20 rounded-3xl blur-3xl" />
+              <div className="relative rounded-3xl border border-white/10 bg-dark-800/50 backdrop-blur-xl p-8 shadow-2xl">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-400">Server Dashboard</span>
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+                      <span className="text-xs text-gray-500">Live</span>
                     </div>
-                  ))}
+                  </div>
+                  
+                  <div className="space-y-4 rounded-2xl border border-white/10 bg-dark-900/80 p-6">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-400">Coin balance</span>
+                      <Coins className="h-5 w-5 text-accent-400" />
+                    </div>
+                    <p className="text-5xl font-bold bg-gradient-to-r from-accent-400 to-primary-400 bg-clip-text text-transparent">
+                      12,480
+                    </p>
+                    <div className="flex items-center justify-between text-sm pt-2 border-t border-white/5">
+                      <span className="text-gray-400">Earning rate</span>
+                      <span className="text-white font-medium">1 coin/min</span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid gap-3">
+                    {[
+                      ["Active servers", liveStats?.activeServers ?? stats.activeServers ?? "—", Server],
+                      ["Total users", liveStats?.totalUsers ?? stats.totalUsers ?? "—", Globe],
+                      ["Network uptime", stats.uptime || "99.9%", Zap]
+                    ].map(([label, val, Icon]) => (
+                      <div key={label} className="flex items-center justify-between rounded-xl border border-white/5 bg-dark-900/60 px-4 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <Icon className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm text-gray-400">{label}</span>
+                        </div>
+                        <span className="text-sm font-semibold text-white">{val}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -307,29 +332,31 @@ export default function Landing() {
           <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {loadingContent
               ? Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-36 animate-pulse rounded-2xl bg-slate-800/40" />
+                  <div key={i} className="h-48 animate-pulse rounded-2xl bg-white/5" />
                 ))
               : (Array.isArray(features) ? features : []).map((feature, i) => (
-                  <div key={i} className="glass rounded-2xl border border-slate-700/40 p-6 shadow-soft">
-                    <DynamicIcon name={feature.icon} className="h-6 w-6 text-neon-300" />
-                    <h3 className="mt-4 text-lg font-semibold text-slate-100">{feature.title}</h3>
-                    <p className="mt-2 text-sm text-slate-400">{feature.description}</p>
+                  <div key={i} className="group rounded-2xl border border-white/10 bg-dark-800/50 backdrop-blur-sm p-6 hover:border-primary-500/30 hover:bg-dark-800/80 transition-all">
+                    <div className="h-12 w-12 rounded-xl bg-primary-500/10 flex items-center justify-center mb-4 group-hover:bg-primary-500/20 transition-all">
+                      <DynamicIcon name={feature.icon} className="h-6 w-6 text-primary-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
+                    <p className="text-sm text-gray-400 leading-relaxed">{feature.description}</p>
                   </div>
                 ))}
           </section>
 
           {/* ── Landing Plans ── */}
           {(loadingPlans || plans.length > 0) && (
-            <section className="space-y-8">
-              <div className="text-center">
-                <h2 className="text-3xl font-semibold text-slate-100">Choose Your Plan</h2>
-                <p className="mt-2 text-slate-400">Simple pricing. No hidden fees.</p>
+            <section className="space-y-12">
+              <div className="text-center space-y-4">
+                <h2 className="text-4xl lg:text-5xl font-bold text-white">Choose your plan</h2>
+                <p className="text-lg text-gray-400">Simple, transparent pricing. No hidden fees.</p>
               </div>
 
               {loadingPlans ? (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="h-64 animate-pulse rounded-2xl bg-slate-800/40" />
+                    <div key={i} className="h-80 animate-pulse rounded-3xl bg-white/5" />
                   ))}
                 </div>
               ) : (
@@ -337,53 +364,62 @@ export default function Landing() {
                   {plans.map((plan) => (
                     <div
                       key={plan.id}
-                      className={`glass relative rounded-2xl border p-6 shadow-soft transition hover:-translate-y-0.5 ${
+                      className={`relative rounded-3xl border p-8 backdrop-blur-sm transition-all hover:-translate-y-1 hover:shadow-2xl ${
                         plan.popular
-                          ? "border-neon-500/50 ring-1 ring-neon-500/20"
-                          : "border-slate-700/40"
+                          ? "border-primary-500/50 bg-gradient-to-b from-primary-500/10 to-dark-800/50 shadow-lg shadow-primary-500/20"
+                          : "border-white/10 bg-dark-800/50 hover:border-white/20"
                       }`}
                     >
                       {plan.popular && (
-                        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                          <span className="flex items-center gap-1 rounded-full border border-neon-500/50 bg-neon-900/90 px-3 py-0.5 text-xs font-semibold text-neon-200">
-                            <Star className="h-3 w-3" /> Most Popular
+                        <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                          <span className="flex items-center gap-1.5 rounded-full border border-primary-500/50 bg-primary-500 px-4 py-1.5 text-xs font-semibold text-white shadow-lg">
+                            <Star className="h-3.5 w-3.5 fill-white" /> Most Popular
                           </span>
                         </div>
                       )}
-                      <div className="space-y-4">
+                      <div className="space-y-6">
                         <div>
-                          <h3 className="text-lg font-semibold text-slate-100">{plan.name}</h3>
-                          <p className="mt-1">
-                            <span className="text-3xl font-bold text-neon-200">₹{plan.price}</span>
-                            <span className="text-sm text-slate-400">/month</span>
-                          </p>
+                          <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-4xl font-bold text-white">₹{plan.price}</span>
+                            <span className="text-gray-400">/month</span>
+                          </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          {[["RAM", `${plan.ram} GB`], ["CPU", `${plan.cpu}`], ["Storage", `${plan.storage} GB`]].map(([k, v]) => (
-                            <div key={k} className="rounded-lg bg-ink-900/60 px-2 py-2 text-center">
-                              <p className="font-semibold text-slate-100">{v}</p>
-                              <p className="text-slate-500">{k}</p>
+                        
+                        <div className="grid grid-cols-3 gap-3">
+                          {[
+                            ["RAM", `${plan.ram} GB`, Cpu], 
+                            ["CPU", `${plan.cpu}`, HardDrive], 
+                            ["Storage", `${plan.storage} GB`, Server]
+                          ].map(([label, value, Icon]) => (
+                            <div key={label} className="rounded-xl bg-dark-900/60 border border-white/5 px-3 py-3 text-center">
+                              <Icon className="h-4 w-4 text-gray-500 mx-auto mb-1" />
+                              <p className="text-sm font-bold text-white">{value}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">{label}</p>
                             </div>
                           ))}
                         </div>
+                        
                         {Array.isArray(plan.features) && plan.features.length > 0 && (
-                          <ul className="space-y-1.5">
+                          <ul className="space-y-2.5 pt-2">
                             {plan.features.map((f, i) => (
-                              <li key={i} className="flex items-center gap-2 text-sm text-slate-300">
-                                <Check className="h-3.5 w-3.5 flex-shrink-0 text-neon-400" />{f}
+                              <li key={i} className="flex items-start gap-3 text-sm text-gray-300">
+                                <Check className="h-4 w-4 flex-shrink-0 text-primary-400 mt-0.5" />
+                                <span>{f}</span>
                               </li>
                             ))}
                           </ul>
                         )}
+                        
                         <Link
                           to={isLoggedIn ? "/plans" : "/register"}
-                          className={`button-3d mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition ${
+                          className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold transition-all ${
                             plan.popular
-                              ? "bg-neon-500/25 border border-neon-500/30 text-neon-200"
-                              : "border border-slate-700/60 text-slate-200 hover:border-slate-600"
+                              ? "bg-primary-500 hover:bg-primary-600 text-white shadow-lg shadow-primary-500/25"
+                              : "bg-white/5 hover:bg-white/10 border border-white/10 text-white"
                           }`}
                         >
-                          {isLoggedIn ? "View Plan" : "Get Started"} <ArrowRight className="h-4 w-4" />
+                          {isLoggedIn ? "Select Plan" : "Get Started"} <ArrowRight className="h-4 w-4" />
                         </Link>
                       </div>
                     </div>
@@ -394,28 +430,57 @@ export default function Landing() {
           )}
 
           {/* ── About / CTA ── */}
-          <section className="glass rounded-3xl border border-slate-700/40 p-10 shadow-soft">
-            <div className="flex flex-wrap items-center justify-between gap-6">
-              <div>
-                <h2 className="text-3xl font-semibold text-slate-100">{about.heading}</h2>
-                <p className="mt-2 text-slate-400">{about.description}</p>
+          <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-primary-500/10 via-dark-800/50 to-accent-500/10 backdrop-blur-sm p-12 lg:p-16">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-primary-500/20 rounded-full blur-3xl -z-10" />
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent-500/20 rounded-full blur-3xl -z-10" />
+            <div className="relative flex flex-col lg:flex-row items-center justify-between gap-8">
+              <div className="text-center lg:text-left max-w-2xl">
+                <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4">{about.heading}</h2>
+                <p className="text-lg text-gray-300">{about.description}</p>
               </div>
               <Link
                 to={isLoggedIn ? "/dashboard" : "/register"}
-                className="button-3d inline-flex items-center gap-2 rounded-xl bg-neon-500/20 px-6 py-3 text-sm font-semibold text-neon-200"
+                className="flex-shrink-0 inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white text-dark-900 hover:bg-gray-100 font-semibold text-lg transition-all hover:scale-105 active:scale-95 shadow-xl"
               >
-                {isLoggedIn ? "Go to Dashboard" : "Build my stack"} <ArrowRight className="h-4 w-4" />
+                {isLoggedIn ? "Go to Dashboard" : "Start Building"} <ArrowRight className="h-5 w-5" />
               </Link>
             </div>
           </section>
 
           {/* ── Footer ── */}
-          <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/60 py-6 text-xs text-slate-500">
-            <p>{footer.text}</p>
-            <div className="flex items-center gap-4">
-              {(Array.isArray(footer.links) ? footer.links : ["Privacy", "Terms", "Status"]).map((link) => (
-                <span key={link}>{link}</span>
-              ))}
+          <footer className="border-t border-white/10 pt-12 pb-8 space-y-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              <div className="col-span-2">
+                <Logo size="lg" />
+                <p className="mt-4 text-sm text-gray-400 max-w-xs">
+                  High-performance Minecraft hosting with intelligent automation and enterprise security.
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-white mb-4">Product</h4>
+                <ul className="space-y-2 text-sm text-gray-400">
+                  <li><Link to="/plans" className="hover:text-white transition-colors">Plans</Link></li>
+                  <li><Link to="/features" className="hover:text-white transition-colors">Features</Link></li>
+                  <li><Link to="/locations" className="hover:text-white transition-colors">Locations</Link></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold text-white mb-4">Support</h4>
+                <ul className="space-y-2 text-sm text-gray-400">
+                  <li><Link to="/knowledgebase" className="hover:text-white transition-colors">Docs</Link></li>
+                  <li><Link to="/contact" className="hover:text-white transition-colors">Contact</Link></li>
+                  <li><Link to="/status" className="hover:text-white transition-colors">Status</Link></li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t border-white/10">
+              <p className="text-sm text-gray-500">{footer.text}</p>
+              <div className="flex items-center gap-6 text-sm text-gray-500">
+                {(Array.isArray(footer.links) ? footer.links : ["Privacy", "Terms", "Status"]).map((link) => (
+                  <Link key={link} to={`/${link.toLowerCase()}`} className="hover:text-white transition-colors">{link}</Link>
+                ))}
+              </div>
             </div>
           </footer>
 

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import SectionHeader from "../components/SectionHeader.jsx"
 import Badge from "../components/Badge.jsx"
 import { api } from "../services/api.js"
 
@@ -126,24 +125,24 @@ export default function TicketDetail() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        title={`Ticket #${ticket.id}`}
-        subtitle={ticket.subject}
-        action={
-          <button
-            onClick={() => navigate("/support")}
-            className="button-3d rounded-xl border border-slate-600/60 px-4 py-2 text-sm font-semibold text-slate-300 hover:border-slate-500/80"
-          >
-            ← Back to Tickets
-          </button>
-        }
-      />
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold text-slate-100">Ticket #{ticket.id}</h1>
+          <p className="text-sm text-slate-400">{ticket.subject}</p>
+        </div>
+        <button
+          onClick={() => navigate("/support")}
+          className="h-10 px-4 rounded-lg border border-dark-700 text-sm font-medium text-slate-300 hover:bg-dark-800 transition-all"
+        >
+          ← Back to tickets
+        </button>
+      </div>
 
       {/* Ticket Info */}
-      <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
+      <div className="rounded-xl border border-dark-700 bg-dark-900 p-4">
         <div className="flex flex-wrap items-center gap-4">
           <Badge
-            label={ticket.status}
+            label={ticket.status === "open" ? "Open" : "Closed"}
             tone={ticket.status === "open" ? "active" : "rejected"}
           />
           {ticket.priority && (
@@ -166,8 +165,8 @@ export default function TicketDetail() {
       </div>
 
       {/* Messages */}
-      <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
-        <h3 className="text-lg font-semibold text-slate-100 mb-4">Conversation</h3>
+      <div className="rounded-xl border border-dark-700 bg-dark-900 p-6">
+        <h3 className="text-lg font-semibold text-slate-100 mb-4">Messages</h3>
         
         <div className="space-y-4 mb-6 max-h-[500px] overflow-y-auto">
           {ticket.messages && ticket.messages.map((msg) => (
@@ -175,16 +174,16 @@ export default function TicketDetail() {
               key={msg.id}
               className={`flex ${msg.sender_type === "user" ? "justify-end" : "justify-start"}`}
             >
-              <div className={`max-w-[80%] rounded-2xl p-4 ${
+              <div className={`max-w-[80%] rounded-xl p-4 ${
                 msg.sender_type === "user"
-                  ? "bg-aurora-500/15 border border-aurora-500/30"
-                  : "bg-slate-800/50 border border-slate-700/50"
+                  ? "bg-primary-500/15 border border-primary-500/30"
+                  : "bg-dark-800 border border-dark-700"
               }`}>
                 <div className="flex items-center gap-2 mb-2">
                   <span className={`text-xs font-semibold ${
-                    msg.sender_type === "admin" ? "text-ember-300" : "text-aurora-300"
+                    msg.sender_type === "admin" ? "text-accent-400" : "text-primary-400"
                   }`}>
-                    {msg.sender_type === "admin" ? "Support Team" : "You"}
+                    {msg.sender_type === "admin" ? "Support team" : "You"}
                   </span>
                   <span className="text-xs text-slate-500">
                     {formatTime(msg.created_at)}
@@ -211,14 +210,14 @@ export default function TicketDetail() {
         {ticket.status === "open" ? (
           <form onSubmit={handleReply} className="space-y-3">
             {error && (
-              <div className="rounded-lg bg-red-900/20 border border-red-700/30 p-3 text-sm text-red-300">
+              <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-300">
                 {error}
               </div>
             )}
             
             {/* Image Preview */}
             {replyImagePreview && (
-              <div className="relative rounded-lg border border-slate-700/60 p-3">
+              <div className="relative rounded-lg border border-dark-700 p-3">
                 <img src={replyImagePreview} alt="Preview" className="max-h-32 rounded-lg" />
                 <button
                   type="button"
@@ -241,16 +240,16 @@ export default function TicketDetail() {
               required
               rows={4}
               maxLength={2000}
-              className="w-full px-4 py-3 rounded-lg border border-slate-700/60 bg-ink-950/60 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-aurora-500/50 resize-none"
+              className="w-full px-4 py-3 rounded-lg border border-dark-700 bg-dark-800 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-primary-500 resize-none"
             />
             <div className="flex justify-between items-center gap-3">
               <div className="flex items-center gap-3">
                 <p className="text-xs text-slate-500">{replyMessage.length}/2000</p>
-                <label className="cursor-pointer text-sm text-aurora-400 hover:text-aurora-300 flex items-center gap-1">
+                <label className="cursor-pointer text-sm text-primary-400 hover:text-primary-300 flex items-center gap-1">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <span>Add image</span>
+                  <span>Attach image</span>
                   <input
                     type="file"
                     accept="image/jpeg,image/jpg,image/png,image/webp"
@@ -262,14 +261,14 @@ export default function TicketDetail() {
               <button
                 type="submit"
                 disabled={sending || !replyMessage.trim()}
-                className="button-3d rounded-lg bg-neon-500/20 px-6 py-2 text-sm font-semibold text-neon-200 hover:bg-neon-500/30 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="rounded-lg bg-primary-500 px-6 py-2 text-sm font-semibold text-white hover:bg-primary-600 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
               >
-                {sending ? "Sending..." : "Send Reply"}
+                {sending ? "Sending..." : "Send"}
               </button>
             </div>
           </form>
         ) : (
-          <div className="rounded-lg bg-slate-800/50 border border-slate-700/50 p-4 text-center text-sm text-slate-400">
+          <div className="rounded-lg bg-dark-800 border border-dark-700 p-4 text-center text-sm text-slate-400">
             This ticket is closed. Cannot send new messages.
           </div>
         )}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Plus, Trash2 } from "lucide-react"
+import AdminNav from "../components/AdminNav.jsx"
 import SectionHeader from "../components/SectionHeader.jsx"
 import ButtonSpinner from "../components/ButtonSpinner.jsx"
 import { useAppUI } from "../context/AppUIContext.jsx"
@@ -89,7 +90,9 @@ export default function AdminLocations() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-dark-950">
+      <AdminNav />
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
       <SectionHeader
         title="Locations Page"
         subtitle="Edit server regions shown on the public /locations page."
@@ -189,6 +192,7 @@ export default function AdminLocations() {
       >
         Save Locations Page
       </ButtonSpinner>
+      </div>
     </div>
   )
 }

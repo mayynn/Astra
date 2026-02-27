@@ -60,6 +60,7 @@ app.use(helmet({
         "'self'",
         "'unsafe-inline'",
         "'unsafe-eval'",
+        "blob:",
         "https://www.highperformanceformat.com",
         "https://pl28770653.effectivegatecpm.com",
         "https://pl28771198.effectivegatecpm.com",
@@ -70,13 +71,27 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
-      connectSrc: ["'self'", "https:"],
+      connectSrc: ["'self'", "https:", "wss:", "ws:"],
       frameSrc: ["'self'", "https:"],
+      workerSrc: ["'self'", "blob:"],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: []
     }
   },
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  hsts: {
+    maxAge: 31536000,  // 1 year
+    includeSubDomains: true,
+    preload: true
+  },
+  frameguard: {
+    action: 'sameorigin'
+  },
+  noSniff: true,
+  xssFilter: true,
+  referrerPolicy: {
+    policy: 'strict-origin-when-cross-origin'
+  }
 }))
 app.use(express.json({ limit: "2mb" }))
 app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"))

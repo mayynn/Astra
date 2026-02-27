@@ -26,16 +26,19 @@ export default function Logo({ size = "md" }) {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       {logoUrl ? (
-        <img src={logoUrl} alt={name} className="h-9 w-9 rounded-xl object-contain" />
+        <img src={logoUrl} alt={name} className="h-10 w-10 rounded-lg object-contain" />
       ) : (
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-ink-800 text-neon-400 shadow-glow font-bold">
-          {letter}
-        </span>
+        <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
+          <span className="text-white font-bold text-lg">
+            {letter}
+          </span>
+        </div>
       )}
-      <div className={`font-semibold tracking-wide ${sizes[size] || sizes.md}`}>
-        {first}<span className="text-neon-400">{last}</span>
+      <div className={`font-semibold ${sizes[size] || sizes.md}`}>
+        <span className="text-white">{first}</span>
+        <span className="bg-gradient-to-r from-primary-400 to-primary-500 bg-clip-text text-transparent">{last}</span>
       </div>
     </div>
   )

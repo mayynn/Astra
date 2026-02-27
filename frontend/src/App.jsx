@@ -10,6 +10,7 @@ import CouponRedeem from "./pages/CouponRedeem.jsx"
 import Coins from "./pages/Coins.jsx"
 import Billing from "./pages/Billing.jsx"
 import MyServers from "./pages/MyServers.jsx"
+import ServerManage from "./pages/ServerManage.jsx"
 import Support from "./pages/Support.jsx"
 import NewTicket from "./pages/NewTicket.jsx"
 import TicketDetail from "./pages/TicketDetail.jsx"
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="/coins" element={<Coins />} />
         <Route path="/billing" element={<Billing />} />
         <Route path="/servers" element={<MyServers />} />
+        <Route path="/servers/:id/manage" element={<ServerManage />} />
         <Route path="/support" element={<Support />} />
         <Route path="/support/new" element={<NewTicket />} />
         <Route path="/support/:id" element={<TicketDetail />} />

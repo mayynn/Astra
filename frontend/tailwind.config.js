@@ -3,55 +3,53 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: {
-          950: "#070b12",
-          900: "#0b1220",
-          800: "#111b2e",
-          700: "#18233b",
-          600: "#23314d"
+        dark: {
+          950: "#0a0e1a",
+          900: "#0f1420",
+          800: "#151b2b",
+          700: "#1e2538",
+          600: "#2a3247"
         },
-        neon: {
-          500: "#3b82f6",
-          400: "#60a5fa",
-          300: "#93c5fd"
+        primary: {
+          600: "#4f46e5",
+          500: "#6366f1",
+          400: "#818cf8"
         },
-        aurora: {
-          500: "#10b981",
-          400: "#34d399",
-          300: "#6ee7b7"
-        },
-        ember: {
-          500: "#f97316",
-          400: "#fb923c",
-          300: "#fdba74"
+        accent: {
+          600: "#7c3aed",
+          500: "#8b5cf6",
+          400: "#a78bfa"
         }
       },
       fontFamily: {
-        sans: ["Space Grotesk", "ui-sans-serif", "system-ui"],
-        mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular"]
+        sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"]
       },
       boxShadow: {
-        glow: "0 0 30px rgba(59, 130, 246, 0.35)",
-        soft: "0 12px 40px rgba(7, 11, 18, 0.35)"
+        'elegant': '0 10px 40px -10px rgba(99, 102, 241, 0.2)',
+        'card': '0 4px 20px rgba(0, 0, 0, 0.3)',
+        'glow': '0 0 30px rgba(99, 102, 241, 0.25)'
       },
-      backgroundImage: {
-        "radial-ink": "radial-gradient(circle at top, rgba(59,130,246,0.12), transparent 55%)",
-        "radial-aurora": "radial-gradient(circle at 20% 20%, rgba(16,185,129,0.18), transparent 45%)",
-        "radial-ember": "radial-gradient(circle at 80% 0%, rgba(249,115,22,0.18), transparent 40%)"
+      backdropBlur: {
+        'xs': '2px'
       },
       keyframes: {
-        floaty: {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-8px)" }
+        'fade-in': {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' }
         },
-        "fade-up": {
-          "0%": { opacity: 0, transform: "translateY(18px)" },
-          "100%": { opacity: 1, transform: "translateY(0)" }
+        'slide-in': {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(0)' }
+        },
+        'pulse-glow': {
+          '0%, 100%': { opacity: '0.5' },
+          '50%': { opacity: '1' }
         }
       },
       animation: {
-        floaty: "floaty 6s ease-in-out infinite",
-        "fade-up": "fade-up 0.6s ease-out forwards"
+        'fade-in': 'fade-in 0.5s ease-out',
+        'slide-in': 'slide-in 0.3s ease-out',
+        'pulse-glow': 'pulse-glow 2s ease-in-out infinite'
       }
     }
   },

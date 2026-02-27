@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import SectionHeader from "../components/SectionHeader.jsx"
-import ServerCard from "../components/ServerCard.jsx"
-import { SkeletonCard } from "../components/Skeletons.jsx"
+import Topbar from "../components/Topbar.jsx"
 import { api } from "../services/api.js"
 import { useAppUI } from "../context/AppUIContext.jsx"
+import { Server, Search, AlertCircle, Clock, Plus } from "lucide-react"
 
 export default function MyServers() {
   const [servers, setServers] = useState([])
   const [loading, setLoading] = useState(true)
   const [renewing, setRenewing] = useState({})
   const [countdowns, setCountdowns] = useState({})
+  const [searchQuery, setSearchQuery] = useState("")
   const navigate = useNavigate()
   const { showSuccess, showError } = useAppUI()
 
@@ -33,7 +33,7 @@ export default function MyServers() {
     }
 
     loadServers()
-  }, [navigate])
+  }, [navigate, showError])
 
   // Update countdowns every second
   useEffect(() => {
@@ -101,127 +101,180 @@ export default function MyServers() {
     }
   }
 
+  const filteredServers = servers.filter(
+    (s) =>
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.identifier?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   if (loading) {
     return (
-      <div className="space-y-6">
-        <SectionHeader title="My Servers" subtitle="Expiry countdowns and renewal actions update in real time." />
-        <div className="grid gap-4 lg:grid-cols-2">
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
-      </div>
-    )
-  }
-
-  if (servers.length === 0) {
-    return (
-      <div className="space-y-6">
-        <SectionHeader
-          title="My Servers"
-          subtitle="Expiry countdowns and renewal actions update in real time."
-        />
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-800/60 bg-ink-900/70 py-12">
-          <p className="text-slate-400 mb-4">No active servers</p>
-          <a
-            href="/plans"
-            className="button-3d rounded-xl bg-aurora-500/20 px-6 py-2 text-sm font-semibold text-aurora-200 hover:bg-aurora-500/30"
-          >
-            Deploy a server
-          </a>
-        </div>
+      <div className="flex items-center justify-center h-96">
+        <p className="text-gray-400">Loading servers...</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <SectionHeader
-        title="My Servers"
-        subtitle="Expiry countdowns and renewal actions update in real time."
-      />
+    <div className="space-y-8 pb-16">
+      <Topbar />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {servers.map((server) => (
-          <div
-            key={server.id}
-            className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6 space-y-4"
-          >
-            <div>
-              <h3 className="text-lg font-semibold text-slate-100">{server.name}</h3>
-              <p className="text-xs text-slate-500">{server.plan}</p>
-            </div>
-
-            {server.status === "suspended" && (
-              <div className="rounded-lg bg-red-900/20 border border-red-700/30 p-3 text-xs text-red-300">
-                ⚠️ Your server is suspended. Renew within {countdowns[`grace-${server.id}`] || "12h"} to avoid deletion.
-              </div>
-            )}
-
-            {server.status === "deleted" && (
-              <div className="rounded-lg bg-slate-900/50 border border-slate-700/30 p-3 text-xs text-slate-400">
-                ❌ Server deleted. Grace period expired.
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-xs text-slate-500">Status</p>
-                <p className={`font-semibold ${
-                  server.status === "active" ? "text-aurora-200" :
-                  server.status === "suspended" ? "text-orange-300" :
-                  "text-slate-400"
-                }`}>
-                  {server.status.charAt(0).toUpperCase() + server.status.slice(1)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Expires in</p>
-                <p className="font-semibold text-slate-100">
-                  {countdowns[server.id] || "Loading..."}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Plan</p>
-                <p className="font-semibold text-slate-100">{server.plan}</p>
-              </div>
-              {server.plan_type === 'coin' && (
-                <div>
-                  <p className="text-xs text-slate-500">Coins Cost</p>
-                  <p className="font-semibold text-aurora-200">
-                    {server.coin_cost || 0}₳
-                  </p>
-                </div>
-              )}
-              {server.plan_type === 'real' && (
-                <div>
-                  <p className="text-xs text-slate-500">Real Cost</p>
-                  <p className="font-semibold text-aurora-200">
-                    {server.real_cost || 0}₹
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {server.status !== "deleted" && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleRenew(server.id)}
-                  disabled={renewing[server.id]}
-                  className="button-3d flex-1 rounded-xl bg-aurora-500/20 px-4 py-2 text-sm font-semibold text-aurora-200 hover:bg-aurora-500/30 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {renewing[server.id] ? "Renewing..." : "Renew"}
-                </button>
-                <button
-                  onClick={() => window.open('https://panel.astranodes.cloud', '_blank')}
-                  className="button-3d flex-1 rounded-xl border border-slate-600/60 px-4 py-2 text-sm font-semibold text-slate-300 hover:border-slate-500/80"
-                >
-                  Manage
-                </button>
-              </div>
-            )}
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-3xl font-semibold text-gray-100 mb-2">My servers</h1>
+          <p className="text-gray-400">Manage and monitor your active servers.</p>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search servers..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full sm:w-72 bg-dark-800 border border-gray-700 rounded-xl pl-12 pr-4 py-3 text-gray-100 placeholder-gray-400 focus:outline-none focus:border-primary-500 transition-colors"
+            />
           </div>
-        ))}
+          
+          <button
+            onClick={() => navigate("/plans")}
+            className="px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Create server
+          </button>
+        </div>
       </div>
+
+      {/* Servers List */}
+      {filteredServers.length === 0 ? (
+        <div className="bg-dark-800 rounded-2xl border border-gray-800 p-12 text-center">
+          <Server className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-100 mb-2">
+            {searchQuery ? "No servers found" : "No servers yet"}
+          </h3>
+          <p className="text-gray-400 mb-6">
+            {searchQuery
+              ? "Try adjusting your search query."
+              : "Create your first server to get started."}
+          </p>
+          {!searchQuery && (
+            <button
+              onClick={() => navigate("/plans")}
+              className="px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-xl font-medium transition-colors"
+            >
+              Browse plans
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {filteredServers.map((server) => (
+            <div
+              key={server.id}
+              className="bg-dark-800 rounded-xl border border-gray-800 p-6 space-y-4 hover:border-gray-700 transition-colors"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-100">{server.name}</h3>
+                  <p className="text-sm text-gray-400">{server.plan}</p>
+                </div>
+                <span
+                  className={`px-3 py-1 rounded-lg text-xs font-medium ${
+                    server.status === "active"
+                      ? "bg-green-500/10 text-green-500"
+                      : server.status === "suspended"
+                      ? "bg-yellow-500/10 text-yellow-500"
+                      : "bg-gray-500/10 text-gray-400"
+                  }`}
+                >
+                  {server.status.charAt(0).toUpperCase() + server.status.slice(1)}
+                </span>
+              </div>
+
+              {server.status === "suspended" && (
+                <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/20 p-3 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="text-yellow-500 font-medium">Server suspended</p>
+                    <p className="text-yellow-400/80">
+                      Renew within {countdowns[`grace-${server.id}`] || "12h"} to avoid deletion.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {server.status === "deleted" && (
+                <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+                  Server deleted. Grace period expired.
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-400 mb-1">Expires in</p>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-gray-400" />
+                    <p className="font-medium text-gray-100">
+                      {countdowns[server.id] || "Loading..."}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-gray-400 mb-1">Plan type</p>
+                  <p className="font-medium text-gray-100">
+                    {server.plan_type === "coin" ? "Coin plan" : "Real money"}
+                  </p>
+                </div>
+                {server.plan_type === "coin" && (
+                  <div>
+                    <p className="text-gray-400 mb-1">Renewal cost</p>
+                    <p className="font-medium text-primary-500">
+                      {server.coin_cost || 0} coins
+                    </p>
+                  </div>
+                )}
+                {server.plan_type === "real" && (
+                  <div>
+                    <p className="text-gray-400 mb-1">Renewal cost</p>
+                    <p className="font-medium text-primary-500">
+                      ₹{server.real_cost || 0}
+                    </p>
+                  </div>
+                )}
+                {server.identifier && (
+                  <div>
+                    <p className="text-gray-400 mb-1">Identifier</p>
+                    <p className="font-medium text-gray-100 font-mono text-xs">
+                      {server.identifier}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {server.status !== "deleted" && (
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => handleRenew(server.id)}
+                    disabled={renewing[server.id]}
+                    className="flex-1 px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-700 disabled:text-gray-400 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
+                  >
+                    {renewing[server.id] ? "Renewing..." : "Renew"}
+                  </button>
+                  <button
+                    onClick={() => navigate(`/servers/${server.id}/manage`)}
+                    className="flex-1 px-4 py-2 bg-dark-900 hover:bg-gray-800 text-gray-100 rounded-lg font-medium border border-gray-700 transition-colors"
+                  >
+                    Manage
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

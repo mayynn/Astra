@@ -31,6 +31,10 @@ npm run migrate-frontpage
 npm run dev
 ```
 
+> **📝 Note:** Database files are automatically excluded from git (see `.gitignore`). 
+> A fresh database is created automatically when running migrations. 
+> See [DATABASE.md](DATABASE.md) for detailed information.
+
 ## Create Admin User
 ```bash
 cd backend

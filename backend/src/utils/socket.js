@@ -3,6 +3,7 @@
  */
 import { Server } from "socket.io"
 import { verifyToken } from "./jwt.js"
+import { setupConsoleProxy } from "../services/consoleProxy.js"
 
 let io = null
 
@@ -16,7 +17,8 @@ export function initSocket(httpServer, corsOrigin) {
       credentials: originValue !== "*",
       methods: ["GET", "POST"]
     },
-    transports: ["websocket", "polling"]
+    transports: ["polling", "websocket"],
+    allowEIO3: true
   })
 
   // Authenticate every socket connection via JWT
@@ -44,6 +46,9 @@ export function initSocket(httpServer, corsOrigin) {
       console.log(`[Socket] Client disconnected: ${socket.id}`)
     })
   })
+
+  // Attach Pterodactyl console WebSocket proxy
+  setupConsoleProxy(io)
 
   console.log("[Socket] ✓ Socket.io initialized")
   return io

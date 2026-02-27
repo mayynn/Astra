@@ -44,7 +44,9 @@ const envSchema = z.object({
   ADSTERRA_BANNER_KEY: z.string().optional(),
   ADSTERRA_NATIVE_BANNER_SCRIPT: z.string().optional(),
   ADSTERRA_BANNER_SCRIPT: z.string().optional(),
-  ADSTERRA_NATIVE_CONTAINER_ID: z.string().optional()
+  ADSTERRA_NATIVE_CONTAINER_ID: z.string().optional(),
+  // CurseForge API key (optional — enables CurseForge plugin/mod search + install)
+  CURSEFORGE_API_KEY: z.string().optional()
 })
 
 const parsed = envSchema.safeParse(process.env)

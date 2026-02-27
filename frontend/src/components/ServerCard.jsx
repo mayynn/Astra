@@ -1,130 +1,116 @@
 import { useState, useEffect } from "react"
-import { MapPin } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { MapPin, Server, Clock, Cpu, Database, HardDrive } from "lucide-react"
 import Badge from "./Badge.jsx"
 
-export default function ServerCard({ server, onRenew }) {
-  const [countdown, setCountdown] = useState("")
-  const [graceCountdown, setGraceCountdown] = useState("")
+export default function ServerCard({ server, onRenew, renewing, countdown, graceCountdown }) {
+  const navigate = useNavigate()
 
   const statusTone = {
-    active: "active",
-    suspended: "suspended",
-    deleted: "deleted"
+    active: "success",
+    suspended: "warning",
+    deleted: "danger"
   }
 
-  // Real-time countdown for expiry
-  useEffect(() => {
-    if (!server.expires_at) return
-
-    const interval = setInterval(() => {
-      const expiryTime = new Date(server.expires_at).getTime()
-      const now = Date.now()
-      const diff = expiryTime - now
-
-      if (diff <= 0) {
-        setCountdown("Expired")
-      } else {
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-
-        if (days > 0) {
-          setCountdown(`${days}d ${hours}h`)
-        } else if (hours > 0) {
-          setCountdown(`${hours}h ${minutes}m`)
-        } else {
-          setCountdown(`${minutes}m`)
-        }
-      }
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [server.expires_at])
-
-  // Real-time countdown for grace period
-  useEffect(() => {
-    if (!server.grace_expires_at) return
-
-    const interval = setInterval(() => {
-      const graceTime = new Date(server.grace_expires_at).getTime()
-      const now = Date.now()
-      const diff = graceTime - now
-
-      if (diff <= 0) {
-        setGraceCountdown("Grace expired")
-      } else {
-        const hours = Math.floor(diff / (1000 * 60 * 60))
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-        setGraceCountdown(`${hours}h ${minutes}m`)
-      }
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [server.grace_expires_at])
+  const statusLabel = {
+    active: "Online",
+    suspended: "Suspended",
+    deleted: "Deleted"
+  }
 
   const handleManage = () => {
-    window.open("https://panel.astranodes.cloud", "_blank")
+    navigate(`/servers/${server.id}/manage`)
+  }
+
+  const getExpiryText = () => {
+    if (!countdown) return "Loading..."
+    if (countdown === "EXPIRED") return "Expired"
+    return `Expires in ${countdown}`
   }
 
   return (
-    <div className="rounded-2xl border border-slate-700/40 bg-ink-900/70 p-6 shadow-soft">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-100">{server.name}</h3>
-          <p className="text-sm text-slate-400">
-            {server.plan}
-            {server.location && (
-              <span className="ml-2 inline-flex items-center gap-1 text-xs text-slate-500">
-                <MapPin className="h-3 w-3" />{server.location}
-              </span>
-            )}
-          </p>
+    <div className="h-full flex flex-col rounded-xl border border-white/10 bg-dark-800 p-6 hover:border-white/20 transition-colors">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <Server className="h-4 w-4 text-primary-400" />
+            <h3 className="text-lg font-semibold text-white">{server.name}</h3>
+          </div>
+          <p className="text-sm text-slate-400">{server.plan}</p>
+          {server.location && (
+            <p className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+              <MapPin className="h-3 w-3" />
+              {server.location}
+            </p>
+          )}
         </div>
-        <Badge label={server.status} tone={statusTone[server.status]} />
+        <Badge label={statusLabel[server.status] || server.status} tone={statusTone[server.status]} />
       </div>
 
-      {server.status === "suspended" && graceCountdown && (
-        <div className="mt-4 rounded-lg bg-red-900/20 border border-red-700/30 p-3 text-xs text-red-300">
+      {server.status === "suspended" && graceCountdown && graceCountdown !== "PURGE IMMINENT" && (
+        <div className="mb-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 p-3 text-sm text-yellow-400">
           ⚠️ Suspended. Renew within {graceCountdown} to avoid deletion.
         </div>
       )}
 
-      <div className="mt-4 grid gap-3 text-sm text-slate-300 sm:grid-cols-3">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-slate-500">Expiry</p>
-          <p className="mt-1 font-semibold">{countdown || "Loading..."}</p>
+      {graceCountdown === "PURGE IMMINENT" && (
+        <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+          ⚠️ Deletion imminent. Renew immediately.
         </div>
-        <div>
-          <p className="text-xs uppercase tracking-widest text-slate-500">Status</p>
-          <p className={`mt-1 font-semibold ${
-            server.status === "active" ? "text-aurora-200" :
-            server.status === "suspended" ? "text-orange-300" :
-            "text-slate-400"
-          }`}>
-            {server.status.charAt(0).toUpperCase() + server.status.slice(1)}
-          </p>
+      )}
+
+      {/* Server Specs */}
+      <div className="flex-1 space-y-3 mb-4">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-slate-400 flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Expires
+          </span>
+          <span className="text-white font-medium">{getExpiryText()}</span>
         </div>
-        <div>
-          <p className="text-xs uppercase tracking-widest text-slate-500">Cost</p>
-          <p className="mt-1 font-semibold">
-            {server.plan_type === "coin" ? `${server.coin_cost || 0}₳` : `₹${server.real_cost || 0}`}
-          </p>
-        </div>
+        {server.ram && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-slate-400 flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              RAM
+            </span>
+            <span className="text-white font-medium">{server.ram}</span>
+          </div>
+        )}
+        {server.cpu && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-slate-400 flex items-center gap-2">
+              <Cpu className="h-4 w-4" />
+              CPU
+            </span>
+            <span className="text-white font-medium">{server.cpu}%</span>
+          </div>
+        )}
+        {(server.disk || server.storage) && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-slate-400 flex items-center gap-2">
+              <HardDrive className="h-4 w-4" />
+              Storage
+            </span>
+            <span className="text-white font-medium">{server.disk || server.storage}</span>
+          </div>
+        )}
       </div>
 
       {server.status !== "deleted" && (
-        <div className="mt-5 flex flex-wrap gap-3">
-          <button
-            onClick={() => onRenew && onRenew(server.id)}
-            className="rounded-xl bg-neon-500/15 px-4 py-2 text-sm font-semibold text-neon-200 transition hover:bg-neon-500/25"
-          >
-            Renew
-          </button>
+        <div className="flex gap-3 mt-auto pt-4 border-t border-white/10">
           <button
             onClick={handleManage}
-            className="rounded-xl border border-slate-600/60 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500/80"
+            className="flex-1 rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-600 transition-colors"
           >
             Manage
+          </button>
+          <button
+            onClick={() => onRenew && onRenew(server.id)}
+            disabled={renewing}
+            className="flex-1 rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {renewing ? "Renewing..." : "Renew"}
           </button>
         </div>
       )}

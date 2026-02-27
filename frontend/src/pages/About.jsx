@@ -49,9 +49,11 @@ export default function About() {
 
         <section className="text-center mb-16 space-y-4">
           <p className="text-xs uppercase tracking-[0.5em] text-slate-500">Our Story</p>
-          <h1 className="text-4xl font-semibold text-slate-100 sm:text-5xl"
-            dangerouslySetInnerHTML={{ __html: (data.heading || DEFAULT_DATA.heading).replace("<span>", '<span class="text-aurora-200">') }}
-          />
+          <h1 className="text-4xl font-semibold text-slate-100 sm:text-5xl">
+            {(data.heading || DEFAULT_DATA.heading).split('<span>').map((part, i) => 
+              i === 0 ? part : <span key={i} className="text-aurora-200">{part.replace('</span>', '')}</span>
+            )}
+          </h1>
           <p className="mx-auto max-w-2xl text-lg text-slate-400">
             {data.subheading}
           </p>

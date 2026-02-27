@@ -13,11 +13,13 @@ async function startup() {
 
     const httpServer = http.createServer(app)
 
-    const allowedOrigins = (origin) => {
-      if (!origin) return true
-      if (origin.endsWith(".app.github.dev")) return true
-      if (env.NODE_ENV !== "production" || env.FRONTEND_URL.includes("localhost")) return true
-      return env.FRONTEND_URL.split(",").map((u) => u.trim()).includes(origin)
+    // Socket.io origin checker — must call callback(err, allow)
+    const allowedOrigins = (origin, callback) => {
+      if (!origin) return callback(null, true)
+      if (origin.endsWith(".app.github.dev")) return callback(null, true)
+      if (env.NODE_ENV !== "production" || env.FRONTEND_URL.includes("localhost")) return callback(null, true)
+      const ok = env.FRONTEND_URL.split(",").map((u) => u.trim()).includes(origin)
+      callback(ok ? null : new Error("CORS not allowed"), ok)
     }
 
     initSocket(httpServer, allowedOrigins)

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import AdminNav from "../components/AdminNav.jsx"
 import SectionHeader from "../components/SectionHeader.jsx"
 import ButtonSpinner from "../components/ButtonSpinner.jsx"
 import { useAppUI } from "../context/AppUIContext.jsx"
@@ -140,7 +141,9 @@ export default function AdminSiteSettings() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="min-h-screen bg-dark-950">
+      <AdminNav />
+      <div className="max-w-7xl mx-auto p-6 space-y-8">
       <SectionHeader
         title="Site Settings"
         subtitle="Control site name, background, favicon, and maintenance mode."
@@ -394,6 +397,7 @@ export default function AdminSiteSettings() {
             </ButtonSpinner>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )
