@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom"
 import {
   ArrowLeft, Terminal, FolderOpen, FileText, Globe,
   Puzzle, GitBranch, Settings, Users, Play, Square,
-  RotateCcw, Skull, Loader2, ShieldCheck
+  RotateCcw, Skull, Loader2, ShieldCheck, Archive
 } from "lucide-react"
 import SectionHeader from "../components/SectionHeader.jsx"
 import ConsoleTab from "../components/manage/ConsoleTab.jsx"
@@ -14,6 +14,7 @@ import PluginsTab from "../components/manage/PluginsTab.jsx"
 import VersionTab from "../components/manage/VersionTab.jsx"
 import SettingsTab from "../components/manage/SettingsTab.jsx"
 import PlayersTab from "../components/manage/PlayersTab.jsx"
+import BackupsTab from "../components/manage/BackupsTab.jsx"
 import { api } from "../services/api.js"
 
 const tabs = [
@@ -23,6 +24,7 @@ const tabs = [
   { id: "world",      label: "World",      icon: Globe },
   { id: "plugins",    label: "Plugins",    icon: Puzzle },
   { id: "version",    label: "Version",    icon: GitBranch },
+  { id: "backups",    label: "Backups",    icon: Archive },
   { id: "settings",   label: "Settings",   icon: Settings },
   { id: "players",    label: "Players",    icon: Users },
 ]
@@ -112,6 +114,7 @@ export default function ServerManage() {
     world:      <WorldTab serverId={id} />,
     plugins:    <PluginsTab serverId={id} />,
     version:    <VersionTab serverId={id} />,
+    backups:    <BackupsTab serverId={id} />,
     settings:   <SettingsTab serverId={id} />,
     players:    <PlayersTab serverId={id} />,
   }

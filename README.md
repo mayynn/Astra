@@ -5,8 +5,8 @@ Full-stack Minecraft hosting platform with a premium dashboard UI, secure backen
 ## Stack
 - Frontend: React (Vite) + TailwindCSS v4
 - Backend: Node.js (Express) + SQLite
-- Auth: JWT + bcrypt
-- Automation: cron-based expiry checks every 5 minutes
+- Auth: OAuth 2.0 (Google & Discord) + JWT
+- Automation: cron-based expiry checks + automatic backups
 
 ## Project Structure
 - frontend/ - UI and client routing
@@ -23,6 +23,10 @@ npm run dev
 ```bash
 cd backend
 cp .env.example .env
+# Configure OAuth credentials in .env:
+# - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (from Google Cloud Console)
+# - DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET (from Discord Developer Portal)
+# - OAUTH_CALLBACK_URL (your backend URL)
 npm install
 npm run migrate
 npm run migrate-tickets
@@ -35,13 +39,20 @@ npm run dev
 > A fresh database is created automatically when running migrations. 
 > See [DATABASE.md](DATABASE.md) for detailed information.
 
-## Create Admin User
+## Create First Admin User
+
+Since authentication is OAuth-only, use the setAdmin script after first login:
+
 ```bash
 cd backend
-npm run create-admin
-# Follow prompts to create admin account
-# Login with admin credentials to access /admin panel
+# First, login via Google or Discord OAuth in the web app
+# Then promote your account to admin:
+node scripts/setAdmin.js your-email@example.com
 ```
+
+For detailed admin setup instructions, see [ADMIN_SETUP.md](ADMIN_SETUP.md).
+
+Once you're an admin, you can promote other users from the Admin Panel.
 
 ## Dynamic Front Page
 

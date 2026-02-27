@@ -12,6 +12,16 @@ const CF_GAME_MINECRAFT = 432
 const CF_CLASS_PLUGINS = 5   // Bukkit Plugins
 const CF_CLASS_MODS = 6      // Mods (Forge / Fabric / NeoForge / Quilt)
 
+// Supported Modrinth project types
+const PROJECT_TYPES = {
+  plugin: { facet: "project_type:plugin", dir: "plugins", loaders: ["paper", "spigot", "purpur", "bukkit", "folia"] },
+  mod: { facet: "project_type:mod", dir: "mods", loaders: ["forge", "fabric", "neoforge", "quilt"] },
+  datapack: { facet: "project_type:datapack", dir: "world/datapacks", loaders: ["datapack"] },
+  shader: { facet: "project_type:shader", dir: "shaderpacks", loaders: ["iris", "optifine", "canvas"] },
+  resourcepack: { facet: "project_type:resourcepack", dir: "resourcepacks", loaders: ["minecraft"] },
+  modpack: { facet: "project_type:modpack", dir: ".", loaders: ["forge", "fabric", "neoforge", "quilt"] }
+}
+
 /** Helper: build CurseForge headers (requires API key) */
 function cfHeaders() {
   return { "x-api-key": env.CURSEFORGE_API_KEY, Accept: "application/json" }
@@ -25,9 +35,8 @@ function hasCurseForge() {
 /* ── Modrinth ─────────────────────────────────────────────────────────────── */
 
 async function searchModrinth(query, type = "plugin", limit = 15) {
-  const facets = type === "mod"
-    ? [["project_type:mod"]]
-    : [["project_type:plugin"]]
+  const projectType = PROJECT_TYPES[type] || PROJECT_TYPES.plugin
+  const facets = [[projectType.facet]]
 
   const res = await axios.get(`${MODRINTH_API}/search`, {
     params: { query, limit, facets: JSON.stringify(facets), index: "relevance" },
@@ -38,16 +47,45 @@ async function searchModrinth(query, type = "plugin", limit = 15) {
     source: "modrinth",
     id: p.slug,
     slug: p.slug,
+    project_id: p.project_id,
     title: p.title,
     description: p.description,
     downloads: p.downloads,
     icon_url: p.icon_url,
     categories: p.categories,
+    author: p.author,
+    latest_version: p.latest_version,
+    date_created: p.date_created,
+    date_modified: p.date_modified,
+    project_type: p.project_type,
     type
   }))
 }
 
-async function installFromModrinth(serverUuid, nodeId, slug, type = "plugin") {
+async function getModrinthVersions(slug) {
+  const res = await axios.get(`${MODRINTH_API}/project/${slug}/version`, { timeout: 10000 })
+  return res.data.map((v) => ({
+    id: v.id,
+    version_number: v.version_number,
+    version_type: v.version_type, // release, beta, alpha
+    name: v.name,
+    changelog: v.changelog,
+    date_published: v.date_published,
+    downloads: v.downloads,
+    game_versions: v.game_versions,
+    loaders: v.loaders,
+    files: v.files.map((f) => ({
+      url: f.url,
+      filename: f.filename,
+      primary: f.primary,
+      size: f.size,
+      file_type: f.file_type
+    })),
+    dependencies: v.dependencies
+  }))
+}
+
+async function installFromModrinth(serverUuid, nodeId, slug, type = "plugin", versionId = null) {
   // 1. Fetch available versions
   const versionsRes = await axios.get(`${MODRINTH_API}/project/${slug}/version`, { timeout: 10000 })
   const versions = versionsRes.data
@@ -55,39 +93,56 @@ async function installFromModrinth(serverUuid, nodeId, slug, type = "plugin") {
     throw Object.assign(new Error("No versions found for this project"), { statusCode: 404 })
   }
 
-  // Prefer compatible loaders based on type
-  const loaders = type === "mod"
-    ? ["forge", "fabric", "neoforge", "quilt"]
-    : ["paper", "spigot", "purpur", "bukkit", "folia"]
-
-  let target =
-    versions.find((v) => v.loaders?.some((l) => loaders.includes(l.toLowerCase()))) ||
-    versions[0]
-
-  // Find the primary .jar file
-  const jarFile =
-    target.files?.find((f) => f.primary && f.filename.endsWith(".jar")) ||
-    target.files?.find((f) => f.filename.endsWith(".jar"))
-
-  if (!jarFile) {
-    throw Object.assign(new Error("No .jar file found in the latest version"), { statusCode: 404 })
+  // If specific version requested, use it; otherwise pick best compatible
+  let target
+  if (versionId) {
+    target = versions.find((v) => v.id === versionId)
+    if (!target) {
+      throw Object.assign(new Error("Specified version not found"), { statusCode: 404 })
+    }
+  } else {
+    // Prefer compatible loaders based on type
+    const projectType = PROJECT_TYPES[type] || PROJECT_TYPES.plugin
+    const loaders = projectType.loaders
+    target =
+      versions.find((v) => v.loaders?.some((l) => loaders.includes(l.toLowerCase()))) ||
+      versions[0]
   }
 
-  // 2. Download the jar binary
-  const downloadRes = await axios.get(jarFile.url, { responseType: "arraybuffer", timeout: 120000 })
+  // Find the primary file (support .jar and .zip for datapacks/resourcepacks)
+  const primaryFile =
+    target.files?.find((f) => f.primary) ||
+    target.files?.find((f) => f.filename.endsWith(".jar") || f.filename.endsWith(".zip")) ||
+    target.files?.[0]
 
-  // 3. Upload to correct directory
-  const dir = type === "mod" ? "mods" : "plugins"
-  try { await pteroManage.createDirectory(serverUuid, nodeId, "/", dir) } catch { /* exists */ }
+  if (!primaryFile) {
+    throw Object.assign(new Error("No downloadable file found in this version"), { statusCode: 404 })
+  }
 
-  await pteroManage.uploadFile(serverUuid, nodeId, `/${dir}/${jarFile.filename}`, Buffer.from(downloadRes.data))
+  // 2. Download the file
+  const downloadRes = await axios.get(primaryFile.url, { responseType: "arraybuffer", timeout: 120000 })
+
+  // 3. Upload to correct directory based on project type
+  const projectType = PROJECT_TYPES[type] || PROJECT_TYPES.plugin
+  const dir = projectType.dir
+  
+  // Create directory structure if needed
+  const dirParts = dir.split("/").filter(Boolean)
+  let currentPath = "/"
+  for (const part of dirParts) {
+    try { await pteroManage.createDirectory(serverUuid, nodeId, currentPath, part) } catch { /* exists */ }
+    currentPath += part + "/"
+  }
+
+  await pteroManage.uploadFile(serverUuid, nodeId, `/${dir}/${primaryFile.filename}`, Buffer.from(downloadRes.data))
 
   return {
     success: true,
     source: "modrinth",
     name: slug,
-    filename: jarFile.filename,
+    filename: primaryFile.filename,
     version: target.version_number,
+    version_id: target.id,
     type
   }
 }
@@ -192,9 +247,9 @@ export const pluginInstaller = {
   hasCurseForge,
 
   /**
-   * Search for plugins/mods across one or both sources.
+   * Search for plugins/mods/datapacks/etc across one or both sources.
    * @param {string} query
-   * @param {object} opts - { type: "plugin"|"mod", source: "modrinth"|"curseforge"|"all", limit }
+   * @param {object} opts - { type: "plugin"|"mod"|"datapack"|"shader"|"resourcepack"|"modpack", source: "modrinth"|"curseforge"|"all", limit }
    */
   async search(query, { type = "plugin", source = "all", limit = 15 } = {}) {
     const promises = []
@@ -202,7 +257,8 @@ export const pluginInstaller = {
     if (source === "modrinth" || source === "all") {
       promises.push(searchModrinth(query, type, limit).catch(() => []))
     }
-    if ((source === "curseforge" || source === "all") && hasCurseForge()) {
+    // CurseForge only supports plugins and mods
+    if ((source === "curseforge" || source === "all") && hasCurseForge() && ["plugin", "mod"].includes(type)) {
       promises.push(searchCurseForge(query, type, limit).catch(() => []))
     }
 
@@ -211,17 +267,25 @@ export const pluginInstaller = {
   },
 
   /**
-   * Install a plugin/mod from the specified source.
+   * Get all versions for a Modrinth project.
+   * @param {string} slug - Project slug or ID
+   */
+  async getVersions(slug) {
+    return getModrinthVersions(slug)
+  },
+
+  /**
+   * Install a plugin/mod/datapack/etc from the specified source.
    * @param {string} serverUuid
    * @param {number} nodeId
-   * @param {object} opts - { source, slug, projectId, fileId, type }
+   * @param {object} opts - { source, slug, projectId, fileId, versionId, type }
    */
-  async install(serverUuid, nodeId, { source, slug, projectId, fileId, type = "plugin" }) {
+  async install(serverUuid, nodeId, { source, slug, projectId, fileId, versionId, type = "plugin" }) {
     if (source === "curseforge") {
       return installFromCurseForge(serverUuid, nodeId, projectId, fileId, type)
     }
     // Default: modrinth
-    return installFromModrinth(serverUuid, nodeId, slug, type)
+    return installFromModrinth(serverUuid, nodeId, slug, type, versionId)
   },
 
   // Keep backwards-compat aliases

@@ -47,11 +47,14 @@ export default function Plans() {
   const [coinPlans, setCoinPlans] = useState([])
   const [realPlans, setRealPlans] = useState([])
   const [locations, setLocations] = useState([])
+  const [eggs, setEggs] = useState([])
   const [loadingNodes, setLoadingNodes] = useState(false)
+  const [loadingEggs, setLoadingEggs] = useState(false)
   const [loading, setLoading] = useState(true)
   const [selectedPlan, setSelectedPlan] = useState(null)
   const [serverName, setServerName] = useState("")
   const [selectedNode, setSelectedNode] = useState(null) // { nodeId, name }
+  const [selectedEgg, setSelectedEgg] = useState(null) // { id, name, description }
   const [purchasing, setPurchasing] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const navigate = useNavigate()
@@ -81,7 +84,7 @@ export default function Plans() {
   }, [navigate, showError])
 
   const handleConfirmPurchase = async () => {
-    if (!selectedPlan || !serverName.trim()) return
+    if (!selectedPlan || !serverName.trim() || !selectedEgg) return
 
     setPurchasing(true)
     try {
@@ -92,12 +95,15 @@ export default function Plans() {
         selectedPlan.id,
         serverName,
         selectedNode?.nodeId || undefined,
-        selectedNode?.name || ""
+        selectedNode?.name || "",
+        selectedEgg.name,
+        selectedEgg.id
       )
       showSuccess("Server purchased successfully! Redirecting…")
       setSelectedPlan(null)
       setServerName("")
       setSelectedNode(null)
+      setSelectedEgg(null)
       setConfirmOpen(false)
       navigate("/servers")
     } catch (err) {
@@ -107,9 +113,11 @@ export default function Plans() {
     }
   }
 
-  // Fetch live nodes from Pterodactyl when the user opens the purchase form
+  // Fetch live nodes and eggs from Pterodactyl when the user opens the purchase form
   const handleSelectPlan = (plan) => {
     setSelectedPlan(plan)
+    
+    // Fetch nodes if not already loaded
     if (locations.length === 0) {
       setLoadingNodes(true)
       const token = localStorage.getItem("token")
@@ -122,12 +130,25 @@ export default function Plans() {
         .catch(() => {})
         .finally(() => setLoadingNodes(false))
     }
+    
+    // Fetch eggs if not already loaded
+    if (eggs.length === 0) {
+      setLoadingEggs(true)
+      api
+        .getAvailableEggs()
+        .then((eggsList) => {
+          setEggs(eggsList || [])
+          if (eggsList && eggsList.length > 0) setSelectedEgg(eggsList[0])
+        })
+        .catch(() => {})
+        .finally(() => setLoadingEggs(false))
+    }
   }
 
   const handleRequestPurchase = (e) => {
     e.preventDefault()
-    if (!selectedPlan || !serverName.trim()) {
-      showError("Please select a plan and enter a server name")
+    if (!selectedPlan || !serverName.trim() || !selectedEgg) {
+      showError("Please select a plan, enter a server name, and choose server software")
       return
     }
     setConfirmOpen(true)
@@ -285,6 +306,48 @@ export default function Plans() {
             
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                <Package className="w-4 h-4" />
+                Server software
+              </label>
+              {loadingEggs && (
+                <p className="text-sm text-gray-400">Loading available software...</p>
+              )}
+              {!loadingEggs && eggs.length === 0 && (
+                <p className="text-sm text-gray-400">No server software available.</p>
+              )}
+              {!loadingEggs && eggs.length > 0 && (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 max-h-64 overflow-y-auto">
+                  {eggs.map((egg) => (
+                    <button
+                      key={egg.id}
+                      type="button"
+                      onClick={() => setSelectedEgg(egg)}
+                      className={`rounded-xl border p-4 text-left transition-all ${
+                        selectedEgg?.id === egg.id
+                          ? "border-primary-500 bg-primary-500/5"
+                          : "border-gray-700 bg-dark-900 hover:border-gray-600"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-gray-100 truncate">{egg.name}</p>
+                          <p className="text-xs text-gray-500 mt-0.5 truncate">{egg.nestName}</p>
+                          {egg.description && (
+                            <p className="text-sm text-gray-400 mt-1 line-clamp-2">{egg.description}</p>
+                          )}
+                        </div>
+                        {selectedEgg?.id === egg.id && (
+                          <div className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0 mt-2" />
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
                 <MapPin className="w-4 h-4" />
                 Server location
               </label>
@@ -347,7 +410,7 @@ export default function Plans() {
       <ConfirmModal
         open={confirmOpen}
         title="Confirm purchase"
-        message={`Deploy "${serverName}" using the ${selectedPlan?.name} plan?`}
+        message={`Deploy "${serverName}" using the ${selectedPlan?.name} plan with ${selectedEgg?.name || 'default software'}?`}
         detail={
           selectedPlan?.type === "coin"
             ? `This will cost ${selectedPlan?.coin_price} coins for ${selectedPlan?.duration_days} days.`

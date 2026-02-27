@@ -88,26 +88,55 @@ export const pterodactyl = {
     }
   },
 
-  async createServer({ name, userId, limits, nodeId: preferredNodeId = null }) {
+  async getUserByEmail(email) {
+    try {
+      console.log("[PTERODACTYL] Looking up user by email:", email)
+      
+      const response = await client.get("/users", {
+        params: { 
+          'filter[email]': email,
+          per_page: 1
+        }
+      })
+      
+      if (response.data.data && response.data.data.length > 0) {
+        const userId = response.data.data[0].attributes.id
+        console.log("[PTERODACTYL] ✓ Found existing user with ID:", userId)
+        return userId
+      }
+      
+      console.log("[PTERODACTYL] No user found with email:", email)
+      return null
+    } catch (error) {
+      console.log("[PTERODACTYL] ✗ Error looking up user:", error.message)
+      return null
+    }
+  },
+
+  async createServer({ name, userId, limits, nodeId: preferredNodeId = null, software = "papermc", eggId = null }) {
     try {
       // Dynamically select the best node based on real-time resource availability.
       // If the user picked a specific node (preferredNodeId), that node is used
       // directly (still verified for capacity + free allocations).
       const { nodeId, allocationId } = await selectBestNode(limits.memory, limits.disk, preferredNodeId)
 
+      // Use provided eggId or fall back to default from env
+      const selectedEggId = eggId || env.PTERODACTYL_DEFAULT_EGG
+
       console.log("[PTERODACTYL] Creating server:", {
         name,
         userId,
         limits,
         node: nodeId,
-        egg: env.PTERODACTYL_DEFAULT_EGG,
-        allocation: allocationId
+        egg: selectedEggId,
+        allocation: allocationId,
+        software
       })
       
       const payload = {
         name,
         user: userId,
-        egg: env.PTERODACTYL_DEFAULT_EGG,
+        egg: selectedEggId,
         node: nodeId,
         allocation: {
           default: allocationId
@@ -174,6 +203,124 @@ export const pterodactyl = {
         return
       }
       handleError(error, "user deletion")
+    }
+  },
+
+  async getAvailableEggs() {
+    try {
+      console.log("[PTERODACTYL] Fetching available eggs...")
+      const nestsResponse = await client.get("/nests")
+      const eggs = []
+      
+      for (const nest of nestsResponse.data.data) {
+        try {
+          const nestId = nest.attributes.id
+          const eggsResponse = await client.get(`/nests/${nestId}/eggs`)
+          
+          for (const egg of eggsResponse.data.data) {
+            const attr = egg.attributes
+            eggs.push({
+              id: attr.id,
+              name: attr.name,
+              description: attr.description || "",
+              nestId: nestId,
+              nestName: nest.attributes.name,
+              author: attr.author,
+              dockerImage: attr.docker_image
+            })
+          }
+        } catch (err) {
+          // Skip nests we can't access
+          console.warn(`[PTERODACTYL] Could not fetch eggs for nest ${nest.attributes.id}:`, err.message)
+        }
+      }
+      
+      console.log(`[PTERODACTYL] ✓ Found ${eggs.length} available eggs`)
+      return eggs
+    } catch (error) {
+      console.error("[PTERODACTYL] ✗ Failed to fetch eggs:", error.message)
+      // Return empty array instead of throwing to avoid breaking the app
+      return []
+    }
+  },
+
+  // Backup Management
+  async createBackup(serverId, name = 'manual-backup') {
+    try {
+      console.log(`[PTERODACTYL] Creating backup for server ${serverId}...`)
+      const response = await client.post(`/servers/${serverId}/backups`, {
+        name,
+        is_locked: false
+      })
+      
+      const backupUuid = response.data.attributes.uuid
+      console.log(`[PTERODACTYL] ✓ Backup created: ${backupUuid}`)
+      return backupUuid
+    } catch (error) {
+      console.error(`[PTERODACTYL] ✗ Failed to create backup for server ${serverId}:`, error.message)
+      throw new Error('Failed to create backup')
+    }
+  },
+
+  async getBackups(serverId) {
+    try {
+      console.log(`[PTERODACTYL] Fetching backups for server ${serverId}...`)
+      const response = await client.get(`/servers/${serverId}/backups`)
+      
+      const backups = response.data.data.map(backup => ({
+        uuid: backup.attributes.uuid,
+        name: backup.attributes.name,
+        bytes: backup.attributes.bytes,
+        created_at: backup.attributes.created_at,
+        completed_at: backup.attributes.completed_at,
+        is_successful: backup.attributes.is_successful,
+        is_locked: backup.attributes.is_locked
+      }))
+      
+      console.log(`[PTERODACTYL] ✓ Found ${backups.length} backups`)
+      return backups
+    } catch (error) {
+      console.error(`[PTERODACTYL] ✗ Failed to fetch backups for server ${serverId}:`, error.message)
+      throw new Error('Failed to fetch backups')
+    }
+  },
+
+  async deleteBackup(serverId, backupUuid) {
+    try {
+      console.log(`[PTERODACTYL] Deleting backup ${backupUuid} from server ${serverId}...`)
+      await client.delete(`/servers/${serverId}/backups/${backupUuid}`)
+      console.log(`[PTERODACTYL] ✓ Backup deleted: ${backupUuid}`)
+    } catch (error) {
+      if (error.response?.status === 404) {
+        console.log(`[PTERODACTYL] Backup already gone (404): ${backupUuid}`)
+        return
+      }
+      console.error(`[PTERODACTYL] ✗ Failed to delete backup ${backupUuid}:`, error.message)
+      throw new Error('Failed to delete backup')
+    }
+  },
+
+  async restoreBackup(serverId, backupUuid) {
+    try {
+      console.log(`[PTERODACTYL] Restoring backup ${backupUuid} for server ${serverId}...`)
+      await client.post(`/servers/${serverId}/backups/${backupUuid}/restore`)
+      console.log(`[PTERODACTYL] ✓ Backup restore initiated: ${backupUuid}`)
+    } catch (error) {
+      console.error(`[PTERODACTYL] ✗ Failed to restore backup ${backupUuid}:`, error.message)
+      throw new Error('Failed to restore backup')
+    }
+  },
+
+  async getBackupDownloadUrl(serverId, backupUuid) {
+    try {
+      console.log(`[PTERODACTYL] Getting download URL for backup ${backupUuid}...`)
+      const response = await client.get(`/servers/${serverId}/backups/${backupUuid}/download`)
+      const downloadUrl = response.data.attributes.url
+      console.log(`[PTERODACTYL] ✓ Got download URL`)
+      return downloadUrl
+    } catch (error) {
+      console.error(`[PTERODACTYL] ✗ Failed to get download URL for backup ${backupUuid}:`, error.message)
+      throw new Error('Failed to get backup download URL')
     }
   },
 

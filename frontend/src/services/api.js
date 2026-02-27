@@ -64,6 +64,12 @@ export const api = {
     return res.json()
   },
 
+  getAvailableEggs: async () => {
+    const res = await fetch(`${API_URL}/plans/eggs`)
+    if (!res.ok) throw new Error("Failed to fetch eggs")
+    return res.json()
+  },
+
   // Servers
   getAvailableNodes: async (token) => {
     const res = await fetch(`${API_URL}/servers/nodes`, {
@@ -81,7 +87,7 @@ export const api = {
     return res.json()
   },
 
-  purchaseServer: async (token, planType, planId, serverName, nodeId, locationName) => {
+  purchaseServer: async (token, planType, planId, serverName, nodeId, locationName, software = "minecraft", eggId = null) => {
     const res = await fetch(`${API_URL}/servers/purchase`, {
       method: "POST",
       headers: {
@@ -93,7 +99,9 @@ export const api = {
         plan_id: planId,
         server_name: serverName,
         node_id: nodeId || undefined,
-        location: locationName || ""
+        location: locationName || "",
+        software: software,
+        egg_id: eggId || undefined
       })
     })
     if (!res.ok) throw new Error((await res.json()).error || "Purchase failed")
@@ -220,6 +228,22 @@ export const api = {
       body: JSON.stringify({ flagged })
     })
     if (!res.ok) throw new Error("Failed to flag user")
+    return res.json()
+  },
+
+  changeUserRole: async (token, userId, role) => {
+    const res = await fetch(`${API_URL}/admin/users/${userId}/role`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ role })
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new Error(body.message || "Failed to change user role")
+    }
     return res.json()
   },
 
@@ -861,11 +885,19 @@ export const api = {
     return res.json()
   },
 
-  serverInstallPlugin: async (token, serverId, { source, slug, projectId, fileId, type }) => {
+  serverGetPluginVersions: async (token, serverId, slug) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/plugins/${slug}/versions`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) throw new Error("Failed to fetch versions")
+    return res.json()
+  },
+
+  serverInstallPlugin: async (token, serverId, { source, slug, projectId, fileId, versionId, type }) => {
     const res = await fetch(`${API_URL}/servers/${serverId}/plugins/install`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ source, slug, projectId, fileId, type })
+      body: JSON.stringify({ source, slug, projectId, fileId, versionId, type })
     })
     if (!res.ok) throw new Error((await res.json()).error || "Installation failed")
     return res.json()
@@ -918,6 +950,52 @@ export const api = {
     })
     if (!res.ok) throw new Error((await res.json()).error || "Action failed")
     return res.json()
+  },
+
+  // Backups
+  serverListBackups: async (token, serverId) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/backups`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to list backups")
+    return res.json()
+  },
+
+  serverCreateBackup: async (token, serverId, name = null) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/backups`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name })
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to create backup")
+    return res.json()
+  },
+
+  serverDeleteBackup: async (token, serverId, backupUuid) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/backups/${backupUuid}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to delete backup")
+    return res.json()
+  },
+
+  serverRestoreBackup: async (token, serverId, backupUuid) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/backups/${backupUuid}/restore`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to restore backup")
+    return res.json()
+  },
+
+  serverDownloadBackup: async (token, serverId, backupUuid) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/backups/${backupUuid}/download`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to get download URL")
+    const data = await res.json()
+    return data.url
   }
 }
 export default api

@@ -46,7 +46,14 @@ const envSchema = z.object({
   ADSTERRA_BANNER_SCRIPT: z.string().optional(),
   ADSTERRA_NATIVE_CONTAINER_ID: z.string().optional(),
   // CurseForge API key (optional — enables CurseForge plugin/mod search + install)
-  CURSEFORGE_API_KEY: z.string().optional()
+  CURSEFORGE_API_KEY: z.string().optional(),
+  // OAuth Configuration
+  SESSION_SECRET: z.string().min(32),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  DISCORD_CLIENT_ID: z.string().optional(),
+  DISCORD_CLIENT_SECRET: z.string().optional(),
+  OAUTH_CALLBACK_URL: z.string().default("http://localhost:4000")
 })
 
 const parsed = envSchema.safeParse(process.env)

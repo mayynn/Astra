@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
+  password_hash TEXT,
   role TEXT NOT NULL DEFAULT 'user',
   coins INTEGER NOT NULL DEFAULT 0,
   balance REAL NOT NULL DEFAULT 0,
@@ -10,6 +10,11 @@ CREATE TABLE IF NOT EXISTS users (
   pterodactyl_user_id INTEGER,
   flagged INTEGER NOT NULL DEFAULT 0,
   last_claim_time TEXT,
+  oauth_provider TEXT,
+  oauth_id TEXT,
+  email_verified INTEGER NOT NULL DEFAULT 0,
+  verification_token TEXT,
+  verification_token_expires TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -25,7 +30,9 @@ CREATE TABLE IF NOT EXISTS plans_coin (
   duration_days INTEGER NOT NULL,
   limited_stock INTEGER NOT NULL DEFAULT 0,
   stock_amount INTEGER,
-  one_time_purchase INTEGER NOT NULL DEFAULT 0
+  one_time_purchase INTEGER NOT NULL DEFAULT 0,
+  backup_count INTEGER NOT NULL DEFAULT 0,
+  extra_ports INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS plans_real (
@@ -39,7 +46,9 @@ CREATE TABLE IF NOT EXISTS plans_real (
   duration_type TEXT NOT NULL CHECK (duration_type IN ('weekly', 'monthly', 'custom', 'days', 'lifetime')),
   duration_days INTEGER NOT NULL,
   limited_stock INTEGER NOT NULL DEFAULT 0,
-  stock_amount INTEGER
+  stock_amount INTEGER,
+  backup_count INTEGER NOT NULL DEFAULT 0,
+  extra_ports INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS servers (
