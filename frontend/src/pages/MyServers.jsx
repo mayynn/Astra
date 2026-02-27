@@ -212,7 +212,7 @@ export default function MyServers() {
                   {renewing[server.id] ? "Renewing..." : "Renew"}
                 </button>
                 <button
-                  onClick={() => window.open('https://panel.astranodes.cloud', '_blank')}
+                  onClick={() => navigate(`/servers/${server.id}/manage`)}
                   className="button-3d flex-1 rounded-xl border border-slate-600/60 px-4 py-2 text-sm font-semibold text-slate-300 hover:border-slate-500/80"
                 >
                   Manage

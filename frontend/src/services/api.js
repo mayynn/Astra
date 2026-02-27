@@ -715,6 +715,209 @@ export const api = {
     })
     if (!res.ok) throw new Error((await res.json()).message || "Password reset failed")
     return res.json()
+  },
+
+  // ─── Server Management ────────────────────────────────────────────────────
+
+  getServerManage: async (token, serverId) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/manage`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to load server")
+    return res.json()
+  },
+
+  serverPower: async (token, serverId, signal) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/power`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ signal })
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Power action failed")
+    return res.json()
+  },
+
+  serverAcceptEula: async (token, serverId) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/eula`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to accept EULA")
+    return res.json()
+  },
+
+  serverSendCommand: async (token, serverId, command) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/command`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ command })
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Command failed")
+    return res.json()
+  },
+
+  // Files
+  serverListFiles: async (token, serverId, path = "/") => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/files?path=${encodeURIComponent(path)}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to list files")
+    return res.json()
+  },
+
+  serverGetFile: async (token, serverId, path) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/file?path=${encodeURIComponent(path)}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) throw new Error("Failed to read file")
+    return res.text()
+  },
+
+  serverWriteFile: async (token, serverId, path, content) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/file/write`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ path, content })
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to save file")
+    return res.json()
+  },
+
+  serverDeleteFiles: async (token, serverId, root, files) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/file/delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ root, files })
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to delete")
+    return res.json()
+  },
+
+  serverCreateFolder: async (token, serverId, root, name) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/file/create-folder`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ root, name })
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to create folder")
+    return res.json()
+  },
+
+  // Properties
+  serverGetProperties: async (token, serverId) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/properties`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to load properties")
+    return res.json()
+  },
+
+  serverSaveProperties: async (token, serverId, content) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/properties`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ content })
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to save properties")
+    return res.json()
+  },
+
+  // World
+  serverWorldDelete: async (token, serverId, worldName) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/world/delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ world_name: worldName })
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to delete world")
+    return res.json()
+  },
+
+  serverWorldReset: async (token, serverId, worldName) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/world/reset`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ world_name: worldName })
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to reset world")
+    return res.json()
+  },
+
+  // Plugins & Mods
+  serverGetSources: async (token, serverId) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/plugins/sources`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) return { modrinth: true, curseforge: false }
+    return res.json()
+  },
+
+  serverSearchPlugins: async (token, serverId, q, { type = "plugin", source = "all" } = {}) => {
+    const params = new URLSearchParams({ q, type, source })
+    const res = await fetch(`${API_URL}/servers/${serverId}/plugins/search?${params}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) throw new Error("Search failed")
+    return res.json()
+  },
+
+  serverInstallPlugin: async (token, serverId, { source, slug, projectId, fileId, type }) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/plugins/install`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ source, slug, projectId, fileId, type })
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Installation failed")
+    return res.json()
+  },
+
+  serverListPlugins: async (token, serverId, type = "plugin") => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/plugins?type=${type}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) throw new Error("Failed to list plugins")
+    return res.json()
+  },
+
+  serverDeletePlugin: async (token, serverId, filename, type = "plugin") => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/plugins/delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ filename, type })
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to remove plugin")
+    return res.json()
+  },
+
+  // Version
+  serverChangeVersion: async (token, serverId, version) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/version`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ version })
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Version change failed")
+    return res.json()
+  },
+
+  // Settings
+  serverGetSettings: async (token, serverId) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/settings`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to load settings")
+    return res.json()
+  },
+
+  // Players
+  serverPlayerAction: async (token, serverId, action, player) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/players`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action, player })
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Action failed")
+    return res.json()
   }
 }
 export default api

@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { MapPin } from "lucide-react"
 import Badge from "./Badge.jsx"
 
 export default function ServerCard({ server, onRenew }) {
   const [countdown, setCountdown] = useState("")
   const [graceCountdown, setGraceCountdown] = useState("")
+  const navigate = useNavigate()
 
   const statusTone = {
     active: "active",
@@ -63,7 +65,7 @@ export default function ServerCard({ server, onRenew }) {
   }, [server.grace_expires_at])
 
   const handleManage = () => {
-    window.open("https://panel.astranodes.cloud", "_blank")
+    navigate(`/servers/${server.id}/manage`)
   }
 
   return (
