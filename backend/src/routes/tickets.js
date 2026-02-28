@@ -1,5 +1,6 @@
 import { Router } from "express"
 import { z } from "zod"
+import rateLimit from "express-rate-limit"
 import { validate } from "../middlewares/validate.js"
 import { requireAuth } from "../middlewares/auth.js"
 import { query, getOne, runSync } from "../config/db.js"
@@ -9,6 +10,16 @@ import { sendTicketNotification } from "../utils/discordWebhook.js"
 const router = Router()
 
 router.use(requireAuth)
+
+// Rate limiter for ticket creation: max 5 per 15 minutes per user
+const ticketCreateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `ticket_create_${req.user?.id ?? req.ip}`,
+  message: { error: "Too many tickets created. Please wait before creating another." }
+})
 
 // Validation schemas
 const createTicketSchema = z.object({
@@ -27,7 +38,7 @@ const replySchema = z.object({
 })
 
 // CREATE TICKET
-router.post("/", uploadTicketImage.single("image"), handleMulterError, validate(createTicketSchema), async (req, res, next) => {
+router.post("/", ticketCreateLimiter, uploadTicketImage.single("image"), handleMulterError, validate(createTicketSchema), async (req, res, next) => {
   try {
     const { category, subject, message, priority = "Medium" } = req.body
     const imageUrl = req.file ? `/uploads/tickets/${req.file.filename}` : null

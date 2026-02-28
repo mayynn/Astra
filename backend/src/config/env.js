@@ -56,7 +56,10 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   DISCORD_CLIENT_ID: z.string().optional(),
   DISCORD_CLIENT_SECRET: z.string().optional(),
-  OAUTH_CALLBACK_URL: z.string().default("http://localhost:4000")
+  OAUTH_CALLBACK_URL: z.string().default("http://localhost:4000"),
+  // Set to "true" to skip TLS certificate verification for Wings connections
+  // (only needed if Wings uses self-signed certificates)
+  WINGS_ALLOW_SELF_SIGNED: z.string().optional().default("false")
 })
 
 const parsed = envSchema.safeParse(process.env)

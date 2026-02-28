@@ -153,7 +153,7 @@ export default function ServerManage() {
               >
                 {displayAddress}
               </span>
-              · Node {srv?.node}
+              · {srv?.node_fqdn || "Node"}
             </p>
           </div>
         </div>

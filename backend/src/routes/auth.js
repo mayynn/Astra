@@ -361,7 +361,8 @@ if (env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET) {
 }
 
 // Exchange session-stored token for JWT (avoids token in URL/Referer header)
-router.get('/exchange-token', (req, res) => {
+// POST prevents CSRF and caching risks inherent to GET endpoints that return tokens
+router.post('/exchange-token', (req, res) => {
   const token = req.session?.oauthToken;
   if (!token) {
     return res.status(401).json({ error: 'No pending authentication' });

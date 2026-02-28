@@ -1,10 +1,37 @@
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
+import { z } from 'zod';
+import rateLimit from 'express-rate-limit';
 import { requireAuth } from '../middlewares/auth.js';
-import { getOne, query, runSync } from '../config/db.js';
+import { validate } from '../middlewares/validate.js';
+import { getOne, query, runSync, transaction } from '../config/db.js';
 import { pteroManage } from '../services/pteroManage.js';
 
 const router = Router();
+
+// Rate limiter for backup operations: max 10 per 5 minutes per user
+const backupLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `backup_${req.user?.id ?? req.ip}`,
+  message: { error: 'Too many backup operations. Please slow down.' }
+});
+
+// Validation schemas
+const createBackupSchema = z.object({
+  body: z.object({
+    name: z.string().min(1).max(100).regex(/^[a-zA-Z0-9 _\-.:]+$/, "Backup name can only contain letters, numbers, spaces, hyphens, underscores, dots, and colons").optional()
+  }).optional().default({})
+});
+
+const backupUuidParamSchema = z.object({
+  params: z.object({
+    serverId: z.coerce.number().int().positive(),
+    backupUuid: z.string().uuid("Invalid backup UUID format")
+  })
+});
 
 /**
  * Resolve Pterodactyl server details (uuid + node) for backup operations.
@@ -74,46 +101,51 @@ router.get('/:serverId/backups', requireAuth, async (req, res, next) => {
 });
 
 // Create a new backup
-router.post('/:serverId/backups', requireAuth, async (req, res, next) => {
+router.post('/:serverId/backups', requireAuth, backupLimiter, validate(createBackupSchema), async (req, res, next) => {
   try {
     const ctx = await resolveServerForBackup(req, res);
     if (!ctx) return;
     const { server, ptero } = ctx;
-    const { name } = req.body;
+    const { name } = req.body || {};
 
-    // Get backup limit from plan
-    const plan = await getOne(
-      `SELECT backup_count FROM ${server.plan_type === 'coin' ? 'plans_coin' : 'plans_real'} WHERE id = ?`,
-      [server.plan_id]
-    );
-    const backupLimit = plan?.backup_count || 0;
-
-    if (backupLimit === 0) {
-      return res.status(403).json({ error: 'Your plan does not include backups' });
-    }
-
-    // Check current backup count from our DB
-    const currentBackups = await query(
-      'SELECT id FROM server_backups WHERE server_id = ?',
-      [server.id]
-    );
-    if (currentBackups.length >= backupLimit) {
-      return res.status(403).json({
-        error: `Backup limit reached (${backupLimit}). Please delete old backups first.`
-      });
-    }
-
-    // Generate a UUID for the backup and create it via Wings
+    // Generate a UUID for the backup
     const backupUuid = randomUUID();
     const backupName = name || `backup-${new Date().toISOString().split('T')[0]}`;
 
-    await pteroManage.createBackup(ptero.uuid, ptero.node, backupUuid);
+    // Atomic check-and-insert to prevent race condition on backup limit
+    await transaction(({ query: txQuery, getOne: txGetOne, runSync: txRun }) => {
+      // Get backup limit from plan
+      const plan = txGetOne(
+        `SELECT backup_count FROM ${server.plan_type === 'coin' ? 'plans_coin' : 'plans_real'} WHERE id = ?`,
+        [server.plan_id]
+      );
+      const backupLimit = plan?.backup_count || 0;
 
-    // Track in our database
-    await runSync(
-      'INSERT OR IGNORE INTO server_backups (server_id, pterodactyl_backup_uuid, name) VALUES (?, ?, ?)',
-      [server.id, backupUuid, backupName]
-    );
+      if (backupLimit === 0) {
+        throw Object.assign(new Error('Your plan does not include backups'), { statusCode: 403 });
+      }
+
+      // Check current backup count inside the transaction
+      const currentBackups = txQuery('SELECT id FROM server_backups WHERE server_id = ?', [server.id]);
+      if (currentBackups.length >= backupLimit) {
+        throw Object.assign(new Error(`Backup limit reached (${backupLimit}). Please delete old backups first.`), { statusCode: 403 });
+      }
+
+      // Reserve the slot in our database first
+      txRun(
+        'INSERT INTO server_backups (server_id, pterodactyl_backup_uuid, name) VALUES (?, ?, ?)',
+        [server.id, backupUuid, backupName]
+      );
+    });
+
+    // Create the backup on Wings (outside transaction — external call)
+    try {
+      await pteroManage.createBackup(ptero.uuid, ptero.node, backupUuid);
+    } catch (wingsError) {
+      // Rollback DB entry if Wings call fails
+      await runSync('DELETE FROM server_backups WHERE server_id = ? AND pterodactyl_backup_uuid = ?', [server.id, backupUuid]);
+      throw wingsError;
+    }
 
     res.status(201).json({
       message: 'Backup created successfully',
@@ -125,7 +157,7 @@ router.post('/:serverId/backups', requireAuth, async (req, res, next) => {
 });
 
 // Delete a backup
-router.delete('/:serverId/backups/:backupUuid', requireAuth, async (req, res, next) => {
+router.delete('/:serverId/backups/:backupUuid', requireAuth, backupLimiter, validate(backupUuidParamSchema), async (req, res, next) => {
   try {
     const ctx = await resolveServerForBackup(req, res);
     if (!ctx) return;
@@ -148,7 +180,7 @@ router.delete('/:serverId/backups/:backupUuid', requireAuth, async (req, res, ne
 });
 
 // Restore a backup
-router.post('/:serverId/backups/:backupUuid/restore', requireAuth, async (req, res, next) => {
+router.post('/:serverId/backups/:backupUuid/restore', requireAuth, backupLimiter, validate(backupUuidParamSchema), async (req, res, next) => {
   try {
     const ctx = await resolveServerForBackup(req, res);
     if (!ctx) return;
@@ -163,7 +195,7 @@ router.post('/:serverId/backups/:backupUuid/restore', requireAuth, async (req, r
 });
 
 // Get backup download URL
-router.get('/:serverId/backups/:backupUuid/download', requireAuth, async (req, res, next) => {
+router.get('/:serverId/backups/:backupUuid/download', requireAuth, validate(backupUuidParamSchema), async (req, res, next) => {
   try {
     const ctx = await resolveServerForBackup(req, res);
     if (!ctx) return;

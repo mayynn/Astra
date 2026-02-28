@@ -60,7 +60,8 @@ export function setupConsoleProxy(io) {
             Authorization: `Bearer ${creds.bearerToken}`,
             Origin: env.PTERODACTYL_URL || ""
           },
-          rejectUnauthorized: false, // Wings may use self-signed certs
+          // Only skip TLS verification if explicitly opted in (self-signed Wings certs)
+          rejectUnauthorized: env.WINGS_ALLOW_SELF_SIGNED !== "true",
           handshakeTimeout: 10000
         })
 
@@ -168,16 +169,25 @@ export function setupConsoleProxy(io) {
 
     /* ── Send a command ────────────────────────────────────────────────── */
     socket.on("console:command", ({ command }) => {
+      // Security: validate command input
+      if (typeof command !== "string" || command.length === 0 || command.length > 512) return
+      // Strip newlines/carriage returns to prevent multi-command injection
+      const sanitized = command.replace(/[\r\n]+/g, " ").trim()
+      if (!sanitized) return
+
       const s = activeSessions.get(socket.id)
       if (!s?.ws || s.ws.readyState !== WebSocket.OPEN) {
         socket.emit("console:error", { message: "Console not connected" })
         return
       }
-      s.ws.send(JSON.stringify({ event: "send command", args: [command] }))
+      s.ws.send(JSON.stringify({ event: "send command", args: [sanitized] }))
     })
 
     /* ── Power signal via WS ───────────────────────────────────────────── */
     socket.on("console:power", ({ signal }) => {
+      // Security: whitelist valid power signals
+      if (!["start", "stop", "restart", "kill"].includes(signal)) return
+
       const s = activeSessions.get(socket.id)
       if (!s?.ws || s.ws.readyState !== WebSocket.OPEN) {
         socket.emit("console:error", { message: "Console not connected" })

@@ -2,6 +2,24 @@ import { appApi } from "../config/ptero.js"
 import { wingsRequest, createWingsToken } from "../config/wingsClient.js"
 import { env } from "../config/env.js"
 import WebSocket from "ws"
+import path from "path"
+
+/**
+ * Sanitize a file/directory path to prevent path traversal attacks.
+ * Rejects paths containing ".." or null bytes.
+ * Wings has its own chroot sandbox, but this adds defense-in-depth.
+ */
+function sanitizePath(p) {
+  if (!p || typeof p !== "string") return "/"
+  if (p.includes("\0")) {
+    throw Object.assign(new Error("Invalid path: null bytes not allowed"), { statusCode: 400 })
+  }
+  const normalized = path.posix.normalize(p)
+  if (normalized.includes("..")) {
+    throw Object.assign(new Error("Invalid path: directory traversal not allowed"), { statusCode: 400 })
+  }
+  return normalized.startsWith("/") ? normalized : "/" + normalized
+}
 
 function handleError(error, action) {
   console.error(`[PTERO-MANAGE] ${action} failed:`, {
@@ -125,7 +143,7 @@ export const pteroManage = {
   async listFiles(serverUuid, nodeId, directory = "/") {
     try {
       const res = await wingsRequest(nodeId, serverUuid, "GET", "/files/list-directory", {
-        params: { directory }
+        params: { directory: sanitizePath(directory) }
       })
       // Wings returns a flat array; normalise field names
       return (res.data || []).map((f) => ({
@@ -147,7 +165,7 @@ export const pteroManage = {
   async getFileContents(serverUuid, nodeId, file) {
     try {
       const res = await wingsRequest(nodeId, serverUuid, "GET", "/files/contents", {
-        params: { file },
+        params: { file: sanitizePath(file) },
         transformResponse: [(data) => data]
       })
       return res.data
@@ -160,7 +178,7 @@ export const pteroManage = {
   async writeFile(serverUuid, nodeId, file, content) {
     try {
       await wingsRequest(nodeId, serverUuid, "POST", "/files/write", {
-        params: { file },
+        params: { file: sanitizePath(file) },
         data: content,
         contentType: "text/plain"
       })
@@ -174,7 +192,7 @@ export const pteroManage = {
   async deleteFiles(serverUuid, nodeId, root, files) {
     try {
       await wingsRequest(nodeId, serverUuid, "POST", "/files/delete", {
-        data: { root, files }
+        data: { root: sanitizePath(root), files: files.map(f => sanitizePath(f)) }
       })
       return { success: true }
     } catch (error) {
@@ -186,7 +204,7 @@ export const pteroManage = {
   async createDirectory(serverUuid, nodeId, root, name) {
     try {
       await wingsRequest(nodeId, serverUuid, "POST", "/files/create-directory", {
-        data: { name, path: root }
+        data: { name, path: sanitizePath(root) }
       })
       return { success: true }
     } catch (error) {
@@ -198,7 +216,7 @@ export const pteroManage = {
   async renameFile(serverUuid, nodeId, root, files) {
     try {
       await wingsRequest(nodeId, serverUuid, "PUT", "/files/rename", {
-        data: { root, files }
+        data: { root: sanitizePath(root), files }
       })
       return { success: true }
     } catch (error) {
@@ -210,7 +228,7 @@ export const pteroManage = {
   async uploadFile(serverUuid, nodeId, filePath, buffer) {
     try {
       await wingsRequest(nodeId, serverUuid, "POST", "/files/write", {
-        params: { file: filePath },
+        params: { file: sanitizePath(filePath) },
         data: buffer,
         contentType: "application/octet-stream",
         timeout: 120000

@@ -67,9 +67,7 @@ router.get("/:serverId/manage", requireAuth, resolveServer, async (req, res, nex
         id: req.server.id,
         name: req.server.name,
         status: req.server.status,
-        pterodactyl_id: req.ptero.id,
         identifier: req.ptero.identifier,
-        node: req.ptero.node,
         node_fqdn: req.ptero.node_fqdn || null,
         limits: req.ptero.limits,
         feature_limits: req.ptero.feature_limits,
@@ -546,8 +544,6 @@ router.get("/:serverId/settings", requireAuth, resolveServer, async (req, res, n
     res.json({
       name: req.ptero.name,
       identifier: req.ptero.identifier,
-      uuid: req.ptero.uuid,
-      node: req.ptero.node,
       node_fqdn: req.ptero.node_fqdn || null,
       limits: req.ptero.limits,
       feature_limits: req.ptero.feature_limits,
@@ -596,7 +592,7 @@ router.put(
 const playerSchema = z.object({
   body: z.object({
     action: z.enum(["kick", "ban", "op", "deop", "pardon", "whitelist_add", "whitelist_remove", "gamemode", "tp", "give", "say", "kill_player"]),
-    player: z.string().min(1).max(32),
+    player: z.string().regex(/^[a-zA-Z0-9_]{1,16}$/, "Invalid player name"),
     args: z.string().max(200).optional()
   })
 })
@@ -667,7 +663,14 @@ router.post(
   validate(playerSchema),
   async (req, res, next) => {
     try {
-      const { action, player, args } = req.body
+      const { action, player } = req.body
+      // Security: strip newlines/carriage returns from args to prevent command injection
+      const args = req.body.args ? req.body.args.replace(/[\r\n]+/g, " ").trim() : ""
+
+      // Per-action args validation
+      if (action === "gamemode" && args && !["survival", "creative", "adventure", "spectator", "0", "1", "2", "3"].includes(args.toLowerCase())) {
+        return res.status(400).json({ error: "Invalid gamemode. Use: survival, creative, adventure, or spectator" })
+      }
 
       // Build the actual Minecraft console command
       const commandMap = {

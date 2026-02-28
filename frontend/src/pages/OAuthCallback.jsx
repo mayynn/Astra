@@ -27,6 +27,7 @@ export default function OAuthCallback() {
     // New secure flow: exchange session-stored token via API call
     if (code === 'session') {
       fetch(`${getApiUrl()}/auth/exchange-token`, {
+        method: 'POST',
         credentials: 'include' // send session cookie
       })
         .then(r => {

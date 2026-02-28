@@ -18,8 +18,8 @@ import { env } from "./env.js"
  *     → talk to Wings at {scheme}://{fqdn}:{port}/api/servers/{uuid}/...
  */
 
-// Wings often uses self-signed certificates; allow them for internal requests
-const httpsAgent = new https.Agent({ rejectUnauthorized: false })
+// Only skip TLS verification if explicitly opted in via env var (self-signed Wings certs)
+const httpsAgent = new https.Agent({ rejectUnauthorized: env.WINGS_ALLOW_SELF_SIGNED !== "true" })
 
 // Cache: nodeId → { fqdn, scheme, port, token, cachedAt }
 const nodeCache = new Map()

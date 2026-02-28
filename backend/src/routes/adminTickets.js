@@ -137,13 +137,14 @@ router.post("/:id/reply", uploadTicketImage.single("image"), handleMulterError, 
 })
 
 // UPDATE TICKET STATUS
-router.patch("/:id/status", async (req, res, next) => {
+const statusSchema = z.object({
+  body: z.object({ status: z.enum(["open", "closed"]) }),
+  params: z.object({ id: z.coerce.number().int().positive() })
+})
+
+router.patch("/:id/status", validate(statusSchema), async (req, res, next) => {
   try {
     const { status } = req.body
-
-    if (!status || (status !== "open" && status !== "closed")) {
-      return res.status(400).json({ error: "Invalid status. Must be 'open' or 'closed'" })
-    }
 
     const ticket = await getOne("SELECT * FROM tickets WHERE id = ?", [req.params.id])
 

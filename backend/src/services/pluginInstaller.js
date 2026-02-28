@@ -1,10 +1,45 @@
 import axios from "axios"
+import path from "path"
 import { pteroManage } from "./pteroManage.js"
 import { env } from "../config/env.js"
 
 /* ═══════════════════════════════════════════════════════════════════════════ *
  *  Plugin / Mod Installer — Modrinth + CurseForge                           *
  * ═══════════════════════════════════════════════════════════════════════════ */
+
+// Security: restrict downloads to known CDN hosts to prevent SSRF
+const ALLOWED_DOWNLOAD_HOSTS = new Set([
+  "cdn.modrinth.com",
+  "edge.forgecdn.net",
+  "mediafilez.forgecdn.net",
+  "media.forgecdn.net"
+])
+
+const MAX_DOWNLOAD_BYTES = 500 * 1024 * 1024 // 500 MB
+
+/** Validate a download URL is from a trusted host and uses HTTPS */
+function validateDownloadUrl(url) {
+  const parsed = new URL(url)
+  if (parsed.protocol !== "https:") {
+    throw Object.assign(new Error("Only HTTPS download URLs are allowed"), { statusCode: 400 })
+  }
+  if (!ALLOWED_DOWNLOAD_HOSTS.has(parsed.hostname)) {
+    throw Object.assign(new Error(`Untrusted download host: ${parsed.hostname}`), { statusCode: 400 })
+  }
+}
+
+/** Sanitize a filename from an external API to prevent path traversal */
+function sanitizeFilename(name) {
+  if (!name || typeof name !== "string") {
+    throw Object.assign(new Error("Missing filename"), { statusCode: 400 })
+  }
+  // Strip any path components — only keep the basename
+  const safe = path.basename(name)
+  if (!safe || safe.startsWith(".") || safe.includes("..")) {
+    throw Object.assign(new Error("Invalid filename"), { statusCode: 400 })
+  }
+  return safe
+}
 
 const MODRINTH_API = "https://api.modrinth.com/v2"
 const CURSEFORGE_API = "https://api.curseforge.com/v1"
@@ -121,12 +156,19 @@ async function installFromModrinth(serverUuid, nodeId, slug, type = "plugin", ve
     throw Object.assign(new Error("No downloadable file found in this version"), { statusCode: 404 })
   }
 
-  // 2. Download the file
-  const downloadRes = await axios.get(primaryFile.url, { responseType: "arraybuffer", timeout: 120000 })
+  // 2. Download the file (with SSRF protection and size limit)
+  validateDownloadUrl(primaryFile.url)
+  const downloadRes = await axios.get(primaryFile.url, {
+    responseType: "arraybuffer",
+    timeout: 120000,
+    maxContentLength: MAX_DOWNLOAD_BYTES,
+    maxBodyLength: MAX_DOWNLOAD_BYTES
+  })
 
   // 3. Upload to correct directory based on project type
   const projectType = PROJECT_TYPES[type] || PROJECT_TYPES.plugin
   const dir = projectType.dir
+  const safeFilename = sanitizeFilename(primaryFile.filename)
   
   // Create directory structure if needed
   const dirParts = dir.split("/").filter(Boolean)
@@ -136,13 +178,13 @@ async function installFromModrinth(serverUuid, nodeId, slug, type = "plugin", ve
     currentPath += part + "/"
   }
 
-  await pteroManage.uploadFile(serverUuid, nodeId, `/${dir}/${primaryFile.filename}`, Buffer.from(downloadRes.data))
+  await pteroManage.uploadFile(serverUuid, nodeId, `/${dir}/${safeFilename}`, Buffer.from(downloadRes.data))
 
   return {
     success: true,
     source: "modrinth",
     name: slug,
-    filename: primaryFile.filename,
+    filename: safeFilename,
     version: target.version_number,
     version_id: target.id,
     type
@@ -226,20 +268,27 @@ async function installFromCurseForge(serverUuid, nodeId, projectId, fileId, type
     downloadUrl = `https://edge.forgecdn.net/files/${part1}/${part2}/${fileData.fileName}`
   }
 
-  // 3. Download
-  const downloadRes = await axios.get(downloadUrl, { responseType: "arraybuffer", timeout: 120000 })
+  // 3. Download (with SSRF protection and size limit)
+  validateDownloadUrl(downloadUrl)
+  const downloadRes = await axios.get(downloadUrl, {
+    responseType: "arraybuffer",
+    timeout: 120000,
+    maxContentLength: MAX_DOWNLOAD_BYTES,
+    maxBodyLength: MAX_DOWNLOAD_BYTES
+  })
 
-  // 4. Upload to correct directory
+  // 4. Upload to correct directory (with filename sanitization)
   const dir = type === "mod" ? "mods" : "plugins"
+  const safeFilename = sanitizeFilename(fileData.fileName)
   try { await pteroManage.createDirectory(serverUuid, nodeId, "/", dir) } catch { /* exists */ }
 
-  await pteroManage.uploadFile(serverUuid, nodeId, `/${dir}/${fileData.fileName}`, Buffer.from(downloadRes.data))
+  await pteroManage.uploadFile(serverUuid, nodeId, `/${dir}/${safeFilename}`, Buffer.from(downloadRes.data))
 
   return {
     success: true,
     source: "curseforge",
-    name: fileData.displayName || fileData.fileName,
-    filename: fileData.fileName,
+    name: fileData.displayName || safeFilename,
+    filename: safeFilename,
     version: fileData.displayName || String(fileData.id),
     type
   }

@@ -104,7 +104,7 @@ export default function SettingsTab({ serverId }) {
         <div className="rounded-lg border border-slate-800/40 divide-y divide-slate-800/40">
           {[
             ["Identifier", settings.identifier],
-            ["Node", settings.node],
+            ["Node", settings.node_fqdn || "—"],
             ["Status", settings.suspended ? "Suspended" : settings.resources?.current_state || "Unknown"],
             ["Address", displayAddress],
             ["Memory Limit", `${limits.memory || 0} MB`],
