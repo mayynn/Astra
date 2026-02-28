@@ -333,31 +333,43 @@ router.get("/me", requireAuth, async (req, res) => {
 // OAuth Routes
 if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
   router.get('/google', passport.authenticate('google', { 
-    scope: ['profile', 'email'],
-    session: false 
+    scope: ['profile', 'email']
   }));
 
   router.get('/google/callback', 
-    passport.authenticate('google', { session: false, failureRedirect: `${env.FRONTEND_URL}/login?error=oauth_failed` }),
+    passport.authenticate('google', { failureRedirect: `${env.FRONTEND_URL}/login?error=oauth_failed` }),
     (req, res) => {
       const token = signToken(req.user);
-      res.redirect(`${env.FRONTEND_URL}/auth/callback?token=${token}`);
+      // Store token briefly in session and redirect — avoids leaking JWT in URL
+      req.session.oauthToken = token;
+      res.redirect(`${env.FRONTEND_URL}/auth/callback?code=session`);
     }
   );
 }
 
 if (env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET) {
-  router.get('/discord', passport.authenticate('discord', { 
-    session: false 
-  }));
+  router.get('/discord', passport.authenticate('discord'));
 
   router.get('/discord/callback',
-    passport.authenticate('discord', { session: false, failureRedirect: `${env.FRONTEND_URL}/login?error=oauth_failed` }),
+    passport.authenticate('discord', { failureRedirect: `${env.FRONTEND_URL}/login?error=oauth_failed` }),
     (req, res) => {
       const token = signToken(req.user);
-      res.redirect(`${env.FRONTEND_URL}/auth/callback?token=${token}`);
+      req.session.oauthToken = token;
+      res.redirect(`${env.FRONTEND_URL}/auth/callback?code=session`);
     }
   );
 }
+
+// Exchange session-stored token for JWT (avoids token in URL/Referer header)
+router.get('/exchange-token', (req, res) => {
+  const token = req.session?.oauthToken;
+  if (!token) {
+    return res.status(401).json({ error: 'No pending authentication' });
+  }
+  // Clear the session token after single use
+  delete req.session.oauthToken;
+  req.session.save();
+  res.json({ token });
+});
 
 export default router

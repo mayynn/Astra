@@ -124,15 +124,15 @@ export default function TicketDetail() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-100">Ticket #{ticket.id}</h1>
+          <h1 className="text-2xl font-bold text-white">Ticket #{ticket.id}</h1>
           <p className="text-sm text-slate-400">{ticket.subject}</p>
         </div>
         <button
           onClick={() => navigate("/support")}
-          className="h-10 px-4 rounded-lg border border-dark-700 text-sm font-medium text-slate-300 hover:bg-dark-800 transition-all"
+          className="button-3d h-10 px-4 rounded-lg border border-white/10 text-sm font-medium text-slate-300 hover:bg-white/[0.04] transition-all"
         >
           ← Back to tickets
         </button>

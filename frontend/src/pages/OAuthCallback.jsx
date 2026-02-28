@@ -14,30 +14,61 @@ export default function OAuthCallback() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
     const error = params.get('error');
 
-    if (error || !token) {
+    if (error) {
       localStorage.setItem('oauth_error', 'Authentication failed. Please try again.');
       navigate('/login');
       return;
     }
 
-    // Store token then fetch user profile so role/coins are available immediately
-    localStorage.setItem('token', token);
+    const code = params.get('code');
 
+    // New secure flow: exchange session-stored token via API call
+    if (code === 'session') {
+      fetch(`${getApiUrl()}/auth/exchange-token`, {
+        credentials: 'include' // send session cookie
+      })
+        .then(r => {
+          if (!r.ok) throw new Error('Token exchange failed');
+          return r.json();
+        })
+        .then(({ token }) => {
+          localStorage.setItem('token', token);
+          return fetch(`${getApiUrl()}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        })
+        .then(r => r.ok ? r.json() : null)
+        .then(user => {
+          if (user) localStorage.setItem('user', JSON.stringify(user));
+          navigate('/dashboard');
+        })
+        .catch(() => {
+          localStorage.setItem('oauth_error', 'Authentication failed. Please try again.');
+          navigate('/login');
+        });
+      return;
+    }
+
+    // Legacy fallback: token directly in URL (for backwards compatibility)
+    const token = params.get('token');
+    if (!token) {
+      localStorage.setItem('oauth_error', 'Authentication failed. Please try again.');
+      navigate('/login');
+      return;
+    }
+
+    localStorage.setItem('token', token);
     fetch(`${getApiUrl()}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(r => r.ok ? r.json() : null)
       .then(user => {
-        if (user) {
-          localStorage.setItem('user', JSON.stringify(user));
-        }
+        if (user) localStorage.setItem('user', JSON.stringify(user));
         navigate('/dashboard');
       })
       .catch(() => {
-        // Even if /me fails, the token is stored — dashboard will retry
         navigate('/dashboard');
       });
   }, [navigate]);

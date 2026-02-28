@@ -121,6 +121,48 @@ export default async function migrate() {
       // Column already exists — safe to ignore
     }
 
+    // ── Remove CHECK constraint from 'software' column ────────────────
+    // The old software-selection.sql added:
+    //   CHECK (software IN ('papermc', 'fabric', 'forge'))
+    // Since software is now egg-based (dynamic), the constraint must go.
+    // SQLite doesn't support ALTER COLUMN, so we recreate the table.
+    try {
+      const hasCheck = await getOne(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='servers'"
+      )
+      if (hasCheck?.sql && /CHECK\s*\(\s*software\s+IN\s*\(/i.test(hasCheck.sql)) {
+        console.log("[Migration] Removing CHECK constraint on servers.software...")
+        await runSync("PRAGMA foreign_keys = OFF")
+        await runSync(`CREATE TABLE servers_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          name TEXT NOT NULL DEFAULT '',
+          plan_type TEXT NOT NULL CHECK (plan_type IN ('coin', 'real')),
+          plan_id INTEGER NOT NULL,
+          pterodactyl_server_id INTEGER,
+          identifier TEXT,
+          expires_at TEXT NOT NULL,
+          suspended_at TEXT,
+          grace_expires_at TEXT,
+          status TEXT NOT NULL CHECK (status IN ('active', 'suspended', 'deleted')),
+          location TEXT NOT NULL DEFAULT '',
+          software TEXT NOT NULL DEFAULT 'minecraft',
+          egg_id INTEGER,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          FOREIGN KEY (user_id) REFERENCES users(id)
+        )`)
+        await runSync("INSERT INTO servers_new SELECT id, user_id, name, plan_type, plan_id, pterodactyl_server_id, identifier, expires_at, suspended_at, grace_expires_at, status, location, software, egg_id, created_at FROM servers")
+        await runSync("DROP TABLE servers")
+        await runSync("ALTER TABLE servers_new RENAME TO servers")
+        await runSync("PRAGMA foreign_keys = ON")
+        console.log("[Migration] ✓ Removed CHECK constraint on servers.software")
+      }
+    } catch (err) {
+      console.warn("[Migration] Could not remove software CHECK constraint:", err.message)
+      // Try to restore foreign keys even on error
+      await runSync("PRAGMA foreign_keys = ON").catch(() => {})
+    }
+
     // Add identifier column to servers (Pterodactyl 8-char short identifier)
     try {
       await runSync("ALTER TABLE servers ADD COLUMN identifier TEXT")
@@ -142,6 +184,15 @@ export default async function migrate() {
       )
     `).catch(() => {})
     await runSync("CREATE INDEX IF NOT EXISTS idx_server_backups_server ON server_backups(server_id)").catch(() => {})
+
+    // Ensure 'name' column exists in server_backups (older schemas may be missing it)
+    try {
+      await runSync("ALTER TABLE server_backups ADD COLUMN name TEXT NOT NULL DEFAULT 'backup'")
+      console.log("[Migration] ✓ Added name column to server_backups")
+    } catch {
+      // Column already exists — safe to ignore
+    }
+
     console.log("[Migration] ✓ server_backups table ensured")
 
     // Seed default site_content sections

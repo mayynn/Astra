@@ -5,8 +5,10 @@ import { requireAuth } from "../middlewares/auth.js"
 import { query, getOne, runSync, transaction } from "../config/db.js"
 import { addDays, getDurationDays } from "../utils/durations.js"
 import { pterodactyl } from "../services/pterodactyl.js"
+import { pteroManage } from "../services/pteroManage.js"
 import { getLimits } from "../cron/expiryCron.js"
 import { purchaseLimiter } from "../middlewares/rateLimit.js"
+import { randomBytes } from "crypto"
 
 const router = Router()
 
@@ -63,16 +65,23 @@ router.get("/", requireAuth, async (req, res, next) => {
         const plan = await getPlan(server.plan_type, server.plan_id)
         const renewalCost = plan ? getPrice(server.plan_type, plan) : 0
         
-        // Fetch server details from Pterodactyl to get IP and port
+        // Fetch server details from Pterodactyl to get IP, port, and node FQDN
         let pteroDetails = null
         if (server.pterodactyl_server_id) {
           try {
-            pteroDetails = await pterodactyl.getServerDetails(server.pterodactyl_server_id)
+            pteroDetails = await pteroManage.getServerDetails(server.pterodactyl_server_id)
           } catch (err) {
             console.error(`[SERVERS] Failed to fetch Pterodactyl details for server ${server.id}:`, err.message)
           }
         }
-        
+
+        // Resolve display IP: prefer ip_alias, then node FQDN if allocation IP is unusable
+        const defaultAlloc = pteroDetails?.allocations?.find(a => a.is_default) || pteroDetails?.allocations?.[0]
+        let displayIp = defaultAlloc?.ip_alias || defaultAlloc?.ip || null
+        if (displayIp && (displayIp === '0.0.0.0' || displayIp.startsWith('10.') || displayIp.startsWith('172.') || displayIp.startsWith('192.168.'))) {
+          displayIp = pteroDetails?.node_fqdn || displayIp
+        }
+
         return {
           ...server,
           plan: plan?.name || "Unknown Plan",
@@ -80,8 +89,8 @@ router.get("/", requireAuth, async (req, res, next) => {
           coin_cost: server.plan_type === "coin" ? renewalCost : undefined,
           real_cost: server.plan_type === "real" ? renewalCost : undefined,
           // Add connection details from Pterodactyl
-          ip: pteroDetails?.ip,
-          port: pteroDetails?.port,
+          ip: displayIp,
+          port: defaultAlloc?.port || null,
           server_identifier: pteroDetails?.identifier || server.identifier
         }
       })
@@ -142,13 +151,40 @@ router.post("/purchase", requireAuth, purchaseLimiter, validate(purchaseSchema),
     const durationDays = getDurationDays(plan.duration_type, plan.duration_days)
     const expiresAt = addDays(null, durationDays)
 
+    // ── Lazy Pterodactyl user provisioning ────────────────────────────
+    // If the user was created via OAuth while Pterodactyl was unavailable,
+    // their pterodactyl_user_id will be null. Provision it now before
+    // creating the server.
+    let pteroUserId = user.pterodactyl_user_id
+    if (!pteroUserId) {
+      const email = req.user.email
+      const username = email.split('@')[0].replace(/[^a-zA-Z0-9-]/g, '').slice(0, 20) || `user${Date.now()}`
+      const pteroPassword = randomBytes(24).toString('base64url')
+
+      // Check if user already exists in Pterodactyl (e.g. created manually)
+      pteroUserId = await pterodactyl.getUserByEmail(email)
+
+      if (!pteroUserId) {
+        pteroUserId = await pterodactyl.createUser({
+          email,
+          username,
+          firstName: username,
+          lastName: 'User',
+          password: pteroPassword,
+        })
+      }
+
+      // Persist so future purchases skip this step
+      await runSync('UPDATE users SET pterodactyl_user_id = ? WHERE id = ?', [pteroUserId, req.user.id])
+    }
+
     // ── Create Pterodactyl server (external call, outside transaction) ─
     let pteroServerId
     let pteroIdentifier = null
     try {
       pteroServerId = await pterodactyl.createServer({
         name: serverName,
-        userId: user.pterodactyl_user_id,
+        userId: pteroUserId,
         limits: getLimits(plan),
         nodeId: nodeId || null,
         software: software,
@@ -162,13 +198,17 @@ router.post("/purchase", requireAuth, purchaseLimiter, validate(purchaseSchema),
         // non-fatal — identifier can be fetched later
       }
     } catch (pteroErr) {
-      // Refund the balance if Pterodactyl fails
-      const balanceField = getBalanceField(planType)
-      const price = getPrice(planType, plan)
-      await runSync(`UPDATE users SET ${balanceField} = ${balanceField} + ? WHERE id = ?`, [price, req.user.id])
-      if (plan.limited_stock) {
-        const table = planType === "coin" ? "plans_coin" : "plans_real"
-        await runSync(`UPDATE ${table} SET stock_amount = stock_amount + 1 WHERE id = ?`, [planId])
+      // Refund the balance if Pterodactyl fails — wrap in try/catch so refund errors are logged
+      try {
+        const balanceField = getBalanceField(planType)
+        const price = getPrice(planType, plan)
+        await runSync(`UPDATE users SET ${balanceField} = ${balanceField} + ? WHERE id = ?`, [price, req.user.id])
+        if (plan.limited_stock) {
+          const table = planType === "coin" ? "plans_coin" : "plans_real"
+          await runSync(`UPDATE ${table} SET stock_amount = stock_amount + 1 WHERE id = ?`, [planId])
+        }
+      } catch (refundErr) {
+        console.error("[SERVERS] CRITICAL: Refund failed after Pterodactyl error. User:", req.user.id, "Error:", refundErr.message)
       }
       throw pteroErr
     }

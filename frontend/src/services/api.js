@@ -64,8 +64,10 @@ export const api = {
     return res.json()
   },
 
-  getAvailableEggs: async () => {
-    const res = await fetch(`${API_URL}/plans/eggs`)
+  getAvailableEggs: async (token) => {
+    const res = await fetch(`${API_URL}/plans/eggs`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
     if (!res.ok) throw new Error("Failed to fetch eggs")
     return res.json()
   },
@@ -876,8 +878,8 @@ export const api = {
     return res.json()
   },
 
-  serverSearchPlugins: async (token, serverId, q, { type = "plugin", source = "all" } = {}) => {
-    const params = new URLSearchParams({ q, type, source })
+  serverSearchPlugins: async (token, serverId, q, { type = "plugin", source = "all", offset = 0, limit = 15 } = {}) => {
+    const params = new URLSearchParams({ q, type, source, offset: String(offset), limit: String(limit) })
     const res = await fetch(`${API_URL}/servers/${serverId}/plugins/search?${params}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -942,11 +944,19 @@ export const api = {
   },
 
   // Players
-  serverPlayerAction: async (token, serverId, action, player) => {
+  serverGetOnlinePlayers: async (token, serverId) => {
+    const res = await fetch(`${API_URL}/servers/${serverId}/players/online`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) throw new Error("Failed to get players")
+    return res.json()
+  },
+
+  serverPlayerAction: async (token, serverId, action, player, args) => {
     const res = await fetch(`${API_URL}/servers/${serverId}/players`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ action, player })
+      body: JSON.stringify({ action, player, args })
     })
     if (!res.ok) throw new Error((await res.json()).error || "Action failed")
     return res.json()

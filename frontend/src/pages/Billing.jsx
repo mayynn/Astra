@@ -81,15 +81,15 @@ export default function Billing() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <p className="text-slate-400">Loading...</p>
+        <div className="w-8 h-8 border-2 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-slate-100">Add funds</h1>
+        <h1 className="text-3xl font-bold text-white">Add funds</h1>
         <p className="text-sm text-slate-400">Pay via UPI, then submit your UTR number and screenshot for verification.</p>
       </div>
 
@@ -203,7 +203,7 @@ export default function Billing() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-xl bg-primary-500 px-4 py-3 text-sm font-semibold text-white hover:bg-primary-600 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+              className="w-full rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-glow-primary hover:from-primary-400 hover:to-primary-500 disabled:opacity-60 disabled:cursor-not-allowed button-3d transition-all"
             >
               {submitting ? "Submitting..." : "Submit for review"}
             </button>

@@ -118,7 +118,7 @@ export default function Knowledgebase() {
   })).filter((s) => s.items.length > 0)
 
   return (
-    <div className="min-h-screen bg-ink-950 text-slate-100">
+    <div className="min-h-screen bg-dark-950 text-slate-100 animate-fade-in">
       <div className="mx-auto max-w-4xl px-6 py-10">
         <PublicNavbar />
 
@@ -172,7 +172,7 @@ export default function Knowledgebase() {
         </div>
 
         <footer className="mt-12 border-t border-slate-800/60 pt-6 text-center text-xs text-slate-500">
-          © 2026 AstraNodes. All rights reserved.
+          © {new Date().getFullYear()} AstraNodes. All rights reserved.
         </footer>
       </div>
     </div>

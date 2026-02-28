@@ -104,9 +104,13 @@ async function createBackups() {
  * Initialize backup cron job — runs daily at 3 AM server time.
  */
 export function initBackupCron() {
-  cron.schedule('0 3 * * *', () => {
+  cron.schedule('0 3 * * *', async () => {
     console.log('[BACKUP CRON] Scheduled trigger...');
-    createBackups();
+    try {
+      await createBackups();
+    } catch (err) {
+      console.error('[BACKUP CRON] Unhandled error:', err.message);
+    }
   });
   console.log('[BACKUP CRON] Initialized (daily at 03:00)');
 }

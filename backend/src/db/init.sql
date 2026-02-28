@@ -64,6 +64,8 @@ CREATE TABLE IF NOT EXISTS servers (
   grace_expires_at TEXT,
   status TEXT NOT NULL CHECK (status IN ('active', 'suspended', 'deleted')),
   location TEXT NOT NULL DEFAULT '',
+  software TEXT NOT NULL DEFAULT 'minecraft',
+  egg_id INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (user_id) REFERENCES users(id)
 );

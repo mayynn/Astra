@@ -3,9 +3,14 @@ import path from "path"
 import FormData from "form-data"
 import axios from "axios"
 import { env } from "../config/env.js"
-import { getOne, runSync } from "../config/db.js"
+import { getOne, runSync, transaction } from "../config/db.js"
 
 export async function sendUtrToDiscord({ user, submission }) {
+  if (!env.DISCORD_WEBHOOK_URL) {
+    console.warn("[UTR] Discord webhook URL not configured — skipping notification")
+    return
+  }
+
   const form = new FormData()
   form.append(
     "content",
@@ -31,20 +36,22 @@ export function getUploadPath(uploadDir, filename) {
 }
 
 export async function approveSubmission(id) {
-  const submission = await getOne("SELECT * FROM utr_submissions WHERE id = ?", [id])
-  if (!submission || submission.status !== "pending") {
-    const err = new Error("Submission not found")
-    err.statusCode = 404
-    throw err
-  }
+  return await transaction(({ getOne: txGetOne, runSync: txRun }) => {
+    const submission = txGetOne("SELECT * FROM utr_submissions WHERE id = ?", [id])
+    if (!submission || submission.status !== "pending") {
+      const err = new Error("Submission not found")
+      err.statusCode = 404
+      throw err
+    }
 
-  await runSync("UPDATE utr_submissions SET status = 'approved' WHERE id = ?", [id])
-  await runSync(
-    "UPDATE users SET balance = balance + ? WHERE id = ?",
-    [submission.amount, submission.user_id]
-  )
+    txRun("UPDATE utr_submissions SET status = 'approved' WHERE id = ?", [id])
+    txRun(
+      "UPDATE users SET balance = balance + ? WHERE id = ?",
+      [submission.amount, submission.user_id]
+    )
 
-  return submission
+    return submission
+  })
 }
 
 export async function rejectSubmission(id) {

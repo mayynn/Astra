@@ -2,7 +2,7 @@ import { Router } from "express"
 import { z } from "zod"
 import { validate } from "../middlewares/validate.js"
 import { requireAuth, requireAdmin } from "../middlewares/auth.js"
-import { query, getOne, runSync } from "../config/db.js"
+import { query, getOne, runSync, transaction } from "../config/db.js"
 import { uploadTicketImage, handleMulterError } from "../middleware/uploadMiddleware.js"
 import { sendTicketNotification } from "../utils/discordWebhook.js"
 
@@ -174,14 +174,20 @@ router.patch("/:id/status", async (req, res, next) => {
 // DELETE TICKET
 router.delete("/:id", async (req, res, next) => {
   try {
-    const ticket = await getOne("SELECT * FROM tickets WHERE id = ?", [req.params.id])
+    const ticketId = Number(req.params.id)
+    if (!ticketId || isNaN(ticketId)) return res.status(400).json({ error: "Invalid ticket ID" })
+
+    const ticket = await getOne("SELECT * FROM tickets WHERE id = ?", [ticketId])
 
     if (!ticket) {
       return res.status(404).json({ error: "Ticket not found" })
     }
 
-    await runSync("DELETE FROM ticket_messages WHERE ticket_id = ?", [req.params.id])
-    await runSync("DELETE FROM tickets WHERE id = ?", [req.params.id])
+    // Delete messages and ticket atomically
+    await transaction(({ runSync: txRun }) => {
+      txRun("DELETE FROM ticket_messages WHERE ticket_id = ?", [ticketId])
+      txRun("DELETE FROM tickets WHERE id = ?", [ticketId])
+    })
 
     res.json({ message: "Ticket deleted successfully" })
   } catch (error) {

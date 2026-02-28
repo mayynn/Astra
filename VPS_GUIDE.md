@@ -78,9 +78,16 @@ Point your domain at the VPS **before** running the script. Certbot needs to rea
 | Type | Name | Value | TTL |
 |------|------|-------|-----|
 | A | `@` | `YOUR_VPS_IP` | 300 |
-| A | `www` | `YOUR_VPS_IP` | 300 |
 
 Replace `YOUR_VPS_IP` with the public IPv4 of your VPS.
+
+### Optional: www subdomain
+
+| Type | Name | Value | TTL |
+|------|------|-------|-----|
+| A | `www` | `YOUR_VPS_IP` | 300 |
+
+> The `www` record is **optional**. During deployment, the script asks whether you have a `www` DNS record. If you say no, Certbot and Nginx will only use the bare domain. This prevents certificate errors from trying to validate a non-existent `www` subdomain.
 
 > **Check propagation** before running the deploy script:
 > ```bash
@@ -146,7 +153,7 @@ cd /opt/astranodes
 bash deploy.sh
 ```
 
-> The script is interactive. It walks you through 8 sections of questions, shows a confirmation screen, then installs and configures everything automatically.
+> The script is interactive. It walks you through 9 sections of questions, shows a confirmation screen, then installs and configures everything automatically.
 
 The script takes approximately **3–8 minutes** on a typical VPS (varies by download speed).
 
@@ -162,6 +169,7 @@ Below is every question the script asks, what it expects, and an example answer.
 |--------|----------|---------|-------|
 | Domain name | ✅ | `astranodes.cloud` | Without `https://` |
 | Email for SSL cert | ✅ | `admin@astranodes.cloud` | Used by Let's Encrypt for renewal notices |
+| Do you have a DNS record for www? | ✅ | `n` | Only say `y` if you have a www A record pointing to this VPS |
 | Install directory | ✅ | `/opt/astranodes` | Where all app files live |
 | Backend API port | ✅ | `4000` | Internal only — never exposed publicly |
 
@@ -250,12 +258,12 @@ Install deps        →  npm install --omit=dev (backend), npm install (frontend
 Run migrations      →  migrate → migrate-icons → migrate-duration →
                         migrate-tickets → upgrade-tickets → migrate-frontpage
 Build frontend      →  npm run build → rsync to /var/www/astranodes
-Write PM2 config    →  ecosystem.config.cjs (fork mode, auto-restart)
+Write PM2 config    →  ecosystem.production.config.cjs (fork mode, auto-restart, gitignored)
 Write Nginx config  →  /etc/nginx/sites-available/astranodes
 Configure UFW       →  allow SSH + HTTP/HTTPS, block internal API port
-Obtain SSL cert     →  certbot --nginx (tries www + bare domain)
+Obtain SSL cert     →  certbot --nginx (domain only, or +www if opted in)
 Start with PM2      →  pm2 start + pm2 save + pm2 startup
-Create admin        →  interactive prompt (can be skipped)
+Admin instructions  →  how to promote first admin via set-admin script
 ```
 
 ---
@@ -275,17 +283,19 @@ curl -s https://yourdomain.com/api/health
 curl -sI https://yourdomain.com | grep -i "strict-transport"
 ```
 
-### Create the admin account (if you skipped it)
+### Create the admin account
+
+Authentication is OAuth-only (Google & Discord). To set up your first admin:
+
+1. Visit `https://yourdomain.com` and log in with Google or Discord
+2. Run the set-admin script:
 
 ```bash
-npm --prefix /opt/astranodes/backend run create-admin
+cd /opt/astranodes/backend
+npm run set-admin your-email@example.com
 ```
 
-Follow the prompts to set the admin username, email, and password.
-
-### Log in to the dashboard
-
-Go to `https://yourdomain.com` and sign in with the admin credentials you just created.
+3. Log out and back in — the Admin Panel link will appear in the sidebar
 
 ### Configure your plans
 
@@ -301,39 +311,71 @@ Go to **Admin Panel → Front Page** to set your site name, hero text, and stats
 
 ## 9. Updating AstraNodes
 
-### Standard update (no schema changes)
+### Recommended: Use the update script
+
+The safest way to update is the included `update.sh` script. It handles everything automatically:
 
 ```bash
-cd /opt/astranodes
-git pull --ff-only
-npm --prefix backend install --omit=dev --quiet
-npm --prefix frontend install --quiet
-npm --prefix frontend run build
-rsync -a --delete frontend/dist/ /var/www/astranodes/
-pm2 restart astranodes-api
+cd /opt/astranodes   # or wherever your repo is cloned
+bash update.sh
 ```
 
-### Update with new migrations
+**What `update.sh` does (in order):**
+1. Backs up your database (keeps last 5 backups in `backend/data/backups/`)
+2. Pulls latest code from git
+3. Syncs code to install directory (preserves `.env`, database, uploads, PM2 config)
+4. Installs/updates backend + frontend dependencies
+5. Runs all database migrations (idempotent — safe to repeat)
+6. Rebuilds the React frontend
+7. Copies build to Nginx web root
+8. Updates PM2 ecosystem config path
+9. Reloads API via PM2 (zero-downtime)
+10. Reloads Nginx
+
+> **Your database, `.env` files, uploads, and PM2 config are NEVER overwritten.**
+
+### What's safe during `git pull`?
+
+The following files are gitignored and will **never** be touched by `git pull`:
+
+| File | Purpose |
+|------|---------|
+| `backend/.env` | All backend secrets |
+| `frontend/.env.production` | Frontend API URL |
+| `backend/data/` | SQLite database + WAL files |
+| `backend/data/backups/` | Automatic DB backups |
+| `backend/uploads/` | User-uploaded files |
+| `ecosystem.production.config.cjs` | PM2 config with your paths |
+| `~/.astranodes-deploy.conf` | Saved deploy wizard answers |
+
+### Manual update (advanced)
+
+If you prefer to update manually:
 
 ```bash
 cd /opt/astranodes
+
+# 1. Backup database first!
+cp backend/data/astranodes.sqlite backend/data/astranodes.sqlite.bak
+
+# 2. Pull code
 git pull --ff-only
+
+# 3. Update dependencies
 npm --prefix backend install --omit=dev --quiet
-
-# Run any new migrations
-npm --prefix backend run --if-present migrate
-npm --prefix backend run --if-present migrate-icons
-npm --prefix backend run --if-present migrate-duration
-npm --prefix backend run --if-present migrate-tickets
-npm --prefix backend run --if-present upgrade-tickets
-npm --prefix backend run --if-present migrate-frontpage
-
-# Rebuild and redeploy frontend
 npm --prefix frontend install --quiet
+
+# 4. Run migrations
+npm --prefix backend run migrate
+npm --prefix backend run migrate-oauth
+
+# 5. Rebuild frontend
 npm --prefix frontend run build
 rsync -a --delete frontend/dist/ /var/www/astranodes/
 
-pm2 restart astranodes-api
+# 6. Restart
+pm2 reload astranodes-api
+nginx -t && systemctl reload nginx
 ```
 
 ---
@@ -348,7 +390,7 @@ pm2 logs astranodes-api               # live log stream
 pm2 logs astranodes-api --lines 200   # last 200 log lines
 pm2 restart astranodes-api            # restart API (zero-downtime)
 pm2 stop astranodes-api               # stop API
-pm2 start ecosystem.config.cjs --env production   # start from config
+pm2 start ecosystem.production.config.cjs --env production   # start from config
 ```
 
 ### Nginx
@@ -372,9 +414,18 @@ certbot renew                         # force renewal
 ### Database
 
 ```bash
-# Backup the database
+# Backups are automatic during `bash update.sh` — stored in:
+ls -la /opt/astranodes/backend/data/backups/
+
+# Manual backup
 cp /opt/astranodes/backend/data/astranodes.sqlite \
    /opt/astranodes/backend/data/astranodes.sqlite.bak
+
+# Restore from backup (stop API first!)
+pm2 stop astranodes-api
+cp /opt/astranodes/backend/data/backups/astranodes-YYYYMMDD-HHMMSS.sqlite \
+   /opt/astranodes/backend/data/astranodes.sqlite
+pm2 start astranodes-api
 
 # Open with sqlite3
 sqlite3 /opt/astranodes/backend/data/astranodes.sqlite
@@ -427,7 +478,10 @@ pm2 restart astranodes-api
 # Check DNS is resolving to this VPS
 dig +short yourdomain.com
 
-# Retry certbot manually
+# Retry certbot manually (bare domain only)
+certbot --nginx -d yourdomain.com
+
+# Or with www (only if you have a www DNS record)
 certbot --nginx -d yourdomain.com -d www.yourdomain.com
 ```
 
@@ -468,7 +522,7 @@ pm2 save
 |------|---------|
 | `/opt/astranodes/backend/.env` | All backend secrets and config — `chmod 600` |
 | `/opt/astranodes/frontend/.env.production` | Frontend build-time API URL |
-| `/opt/astranodes/ecosystem.config.cjs` | PM2 process config |
+| `/opt/astranodes/ecosystem.production.config.cjs` | PM2 process config (gitignored, deploy.sh writes it) |
 | `/etc/nginx/sites-available/astranodes` | Nginx virtual host config |
 | `/etc/nginx/sites-enabled/astranodes` | Symlink to activate the site |
 | `/var/www/astranodes/` | Built React frontend served by Nginx |

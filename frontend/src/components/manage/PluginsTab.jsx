@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Search, Download, Trash2, Package, Loader2, Blocks, Puzzle, Database, Eye, Image, Box, AlertCircle } from "lucide-react"
+import { Search, Download, Trash2, Package, Loader2, Blocks, Puzzle, Box, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { api } from "../../services/api.js"
 import VersionModal from "./VersionModal.jsx"
 
@@ -11,9 +11,6 @@ const SOURCE_COLORS = {
 const PROJECT_TYPES = [
   { id: "plugin", label: "Plugins", icon: Puzzle, color: "neon" },
   { id: "mod", label: "Mods", icon: Blocks, color: "purple" },
-  { id: "datapack", label: "Datapacks", icon: Database, color: "blue" },
-  { id: "shader", label: "Shaders", icon: Eye, color: "yellow" },
-  { id: "resourcepack", label: "Resource Packs", icon: Image, color: "pink" },
   { id: "modpack", label: "Modpacks", icon: Box, color: "indigo" }
 ]
 
@@ -37,6 +34,11 @@ export default function PluginsTab({ serverId }) {
   // Version selection modal
   const [selectedProject, setSelectedProject] = useState(null)
   const [versionModalOpen, setVersionModalOpen] = useState(false)
+
+  // Pagination
+  const [page, setPage] = useState(0)
+  const [totalResults, setTotalResults] = useState(0)
+  const ITEMS_PER_PAGE = 15
 
   const token = localStorage.getItem("token")
 
@@ -62,13 +64,14 @@ export default function PluginsTab({ serverId }) {
 
   useEffect(() => { loadInstalled() }, [serverId])
 
-  // Load featured content on mount or when type/source changes
-  const loadFeatured = async () => {
+  // Load featured content on mount or when type/source/page changes
+  const loadFeatured = async (pg = page) => {
     setSearching(true)
     setError("")
     try {
-      const data = await api.serverSearchPlugins(token, serverId, "", { type, source })
-      setResults(data)
+      const data = await api.serverSearchPlugins(token, serverId, "", { type, source, offset: pg * ITEMS_PER_PAGE, limit: ITEMS_PER_PAGE })
+      setResults(data.results || [])
+      setTotalResults(data.total || 0)
     } catch (err) {
       // Silently fail for featured load
     } finally {
@@ -77,23 +80,39 @@ export default function PluginsTab({ serverId }) {
   }
 
   useEffect(() => {
-    loadFeatured()
-  }, [serverId, type, source])
+    setPage(0)
+    setTotalResults(0)
+  }, [type, source])
+
+  useEffect(() => {
+    if (search.length >= 2) {
+      doSearch(page)
+    } else {
+      loadFeatured(page)
+    }
+  }, [serverId, type, source, page])
 
   // Search
-  const handleSearch = async (e) => {
-    e?.preventDefault()
+  const doSearch = async (pg = 0) => {
     if (search.length < 2) return
     setSearching(true)
     setError("")
     try {
-      const data = await api.serverSearchPlugins(token, serverId, search, { type, source })
-      setResults(data)
+      const data = await api.serverSearchPlugins(token, serverId, search, { type, source, offset: pg * ITEMS_PER_PAGE, limit: ITEMS_PER_PAGE })
+      setResults(data.results || [])
+      setTotalResults(data.total || 0)
     } catch (err) {
       setError(err.message)
     } finally {
       setSearching(false)
     }
+  }
+
+  const handleSearch = async (e) => {
+    e?.preventDefault()
+    if (search.length < 2) return
+    setPage(0)
+    doSearch(0)
   }
 
   // Open version selector
@@ -292,6 +311,34 @@ export default function PluginsTab({ serverId }) {
                 )
               })}
             </div>
+
+            {/* Pagination */}
+            {totalResults > ITEMS_PER_PAGE && (
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-xs text-slate-500">
+                  Showing {page * ITEMS_PER_PAGE + 1}–{Math.min((page + 1) * ITEMS_PER_PAGE, totalResults)} of {totalResults.toLocaleString()}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0 || searching}
+                    className="flex items-center gap-1 rounded-lg border border-slate-700/40 bg-slate-900/30 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800/50 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" /> Prev
+                  </button>
+                  <span className="text-xs text-slate-500 tabular-nums">
+                    Page {page + 1} / {Math.ceil(totalResults / ITEMS_PER_PAGE)}
+                  </span>
+                  <button
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={(page + 1) * ITEMS_PER_PAGE >= totalResults || searching}
+                    className="flex items-center gap-1 rounded-lg border border-slate-700/40 bg-slate-900/30 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800/50 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    Next <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

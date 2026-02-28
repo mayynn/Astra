@@ -19,17 +19,24 @@ const settingsSchema = z.object({
   })
 })
 
+// Track whether the migration has already run in this process
+let _migrationDone = false
+
 async function ensureSettingsRow() {
-  // Add logo_path column if not present (safe to run on every startup)
-  try {
-    await runSync("ALTER TABLE site_settings ADD COLUMN logo_path TEXT DEFAULT ''")
-  } catch { /* column already exists */ }
+  // Add logo_path column if not present (once per process lifetime)
+  if (!_migrationDone) {
+    try {
+      await runSync("ALTER TABLE site_settings ADD COLUMN logo_path TEXT DEFAULT ''")
+    } catch { /* column already exists */ }
+    _migrationDone = true
+  }
 
   const existing = await getOne("SELECT id FROM site_settings ORDER BY id ASC LIMIT 1")
   if (existing) return existing.id
 
+  // Use INSERT OR IGNORE to prevent race condition with concurrent requests
   const created = await runSync(
-    `INSERT INTO site_settings (
+    `INSERT OR IGNORE INTO site_settings (
       site_name,
       background_image,
       background_overlay_opacity,

@@ -24,10 +24,10 @@ const DURATION_TYPES = [
 ]
 
 function makeCoinDefault() {
-  return { name: "", icon: "Package", ram: "", cpu: "", storage: "", coin_price: "", duration_type: "days", duration_days: "", limited_stock: false, stock_amount: "", one_time_purchase: false }
+  return { name: "", icon: "Package", ram: "", cpu: "", storage: "", coin_price: "", duration_type: "days", duration_days: "", limited_stock: false, stock_amount: "", one_time_purchase: false, backup_count: 0, extra_ports: 0 }
 }
 function makeRealDefault() {
-  return { name: "", icon: "Server", ram: "", cpu: "", storage: "", price: "", duration_type: "days", duration_days: "", limited_stock: false, stock_amount: "" }
+  return { name: "", icon: "Server", ram: "", cpu: "", storage: "", price: "", duration_type: "days", duration_days: "", limited_stock: false, stock_amount: "", backup_count: 0, extra_ports: 0 }
 }
 
 export default function AdminPlans() {
@@ -88,6 +88,8 @@ export default function AdminPlans() {
         limited_stock: Boolean(form.limited_stock),
         stock_amount: form.limited_stock ? parseInt(form.stock_amount) : null
       }
+      planData.backup_count = parseInt(form.backup_count) || 0
+      planData.extra_ports = parseInt(form.extra_ports) || 0
       if (type === "coin") planData.one_time_purchase = Boolean(form.one_time_purchase)
 
       if (mode === "create") {
@@ -205,6 +207,8 @@ export default function AdminPlans() {
                     {plan.duration_type === "lifetime" ? "Lifetime" : `${plan.duration_days} days`}
                     {plan.limited_stock ? ` · Stock: ${plan.stock_amount ?? "?"}` : ""}
                     {tab === "coin" && plan.one_time_purchase ? " · One-time" : ""}
+                    {plan.backup_count > 0 ? ` · ${plan.backup_count} backup${plan.backup_count > 1 ? "s" : ""}` : ""}
+                    {plan.extra_ports > 0 ? ` · ${plan.extra_ports} extra port${plan.extra_ports > 1 ? "s" : ""}` : ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -357,6 +361,36 @@ export default function AdminPlans() {
                 )}
               </div>
 
+              {/* Backups & Extra Ports */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="plan-backup-count" className="block text-sm font-medium text-slate-300 mb-1">Backup Limit</label>
+                  <input
+                    id="plan-backup-count"
+                    name="backupCount"
+                    type="number" min="0"
+                    value={form.backup_count ?? 0}
+                    onChange={(e) => setForm({ ...form, backup_count: e.target.value })}
+                    placeholder="0"
+                    className="input w-full"
+                  />
+                  <p className="mt-1 text-[10px] text-slate-600">Number of backups users can create (0 = disabled)</p>
+                </div>
+                <div>
+                  <label htmlFor="plan-extra-ports" className="block text-sm font-medium text-slate-300 mb-1">Extra Ports</label>
+                  <input
+                    id="plan-extra-ports"
+                    name="extraPorts"
+                    type="number" min="0"
+                    value={form.extra_ports ?? 0}
+                    onChange={(e) => setForm({ ...form, extra_ports: e.target.value })}
+                    placeholder="0"
+                    className="input w-full"
+                  />
+                  <p className="mt-1 text-[10px] text-slate-600">Additional port allocations beyond the default (0 = no extras)</p>
+                </div>
+              </div>
+
               {/* One-time (coin only) */}
               {modal.type === "coin" && (
                 <label className="flex items-center gap-2 text-sm font-medium text-slate-300 cursor-pointer">
@@ -391,7 +425,7 @@ export default function AdminPlans() {
         confirmLabel={confirmModal.confirmLabel}
         loading={confirmModal.loading}
         onConfirm={confirmModal.onConfirm}
-        onCancel={() => setConfirmModal({ open: false, title: "", message: "", detail: "", onConfirm: null, loading: false })}
+        onClose={() => setConfirmModal({ open: false, title: "", message: "", detail: "", onConfirm: null, loading: false })}
       />
       </div>
     </div>

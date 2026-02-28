@@ -11,26 +11,30 @@ const router = Router()
 /* ── Middleware: look up the server + resolve Pterodactyl identifier ──────── */
 
 async function resolveServer(req, res, next) {
-  const serverId = Number(req.params.serverId)
-  if (!serverId || isNaN(serverId)) {
-    return res.status(400).json({ error: "Invalid server ID" })
-  }
-
-  const server = await getOne(
-    "SELECT * FROM servers WHERE id = ? AND user_id = ? AND status != 'deleted'",
-    [serverId, req.user.id]
-  )
-  if (!server) {
-    return res.status(404).json({ error: "Server not found or access denied" })
-  }
-
   try {
-    const details = await pteroManage.getServerDetails(server.pterodactyl_server_id)
-    req.server = server
-    req.ptero = details
-    next()
-  } catch {
-    return res.status(502).json({ error: "Failed to reach server panel" })
+    const serverId = Number(req.params.serverId)
+    if (!serverId || isNaN(serverId)) {
+      return res.status(400).json({ error: "Invalid server ID" })
+    }
+
+    const server = await getOne(
+      "SELECT * FROM servers WHERE id = ? AND user_id = ? AND status != 'deleted'",
+      [serverId, req.user.id]
+    )
+    if (!server) {
+      return res.status(404).json({ error: "Server not found or access denied" })
+    }
+
+    try {
+      const details = await pteroManage.getServerDetails(server.pterodactyl_server_id)
+      req.server = server
+      req.ptero = details
+      next()
+    } catch {
+      return res.status(502).json({ error: "Failed to reach server panel" })
+    }
+  } catch (err) {
+    next(err)
   }
 }
 
@@ -46,6 +50,18 @@ router.get("/:serverId/manage", requireAuth, resolveServer, async (req, res, nex
     } catch {
       /* non-fatal */
     }
+
+    // Check if EULA has already been accepted by reading eula.txt from Wings
+    let eulaAccepted = false
+    try {
+      const eulaContent = await pteroManage.getFileContents(req.ptero.uuid, req.ptero.node, "/eula.txt")
+      if (typeof eulaContent === "string" && /eula\s*=\s*true/i.test(eulaContent)) {
+        eulaAccepted = true
+      }
+    } catch {
+      /* eula.txt may not exist yet — that's fine, treat as not accepted */
+    }
+
     res.json({
       server: {
         id: req.server.id,
@@ -54,12 +70,14 @@ router.get("/:serverId/manage", requireAuth, resolveServer, async (req, res, nex
         pterodactyl_id: req.ptero.id,
         identifier: req.ptero.identifier,
         node: req.ptero.node,
+        node_fqdn: req.ptero.node_fqdn || null,
         limits: req.ptero.limits,
         feature_limits: req.ptero.feature_limits,
         allocations: req.ptero.allocations,
         is_suspended: req.ptero.suspended
       },
-      resources
+      resources,
+      eula_accepted: eulaAccepted
     })
   } catch (error) {
     next(error)
@@ -383,11 +401,13 @@ router.get("/:serverId/plugins/search", requireAuth, resolveServer, async (req, 
     const validTypes = ["plugin", "mod", "datapack", "shader", "resourcepack", "modpack"]
     const type = validTypes.includes(req.query.type) ? req.query.type : "plugin"
     const source = ["modrinth", "curseforge", "all"].includes(req.query.source) ? req.query.source : "all"
+    const offset = Math.max(0, parseInt(req.query.offset) || 0)
+    const limit = Math.min(30, Math.max(1, parseInt(req.query.limit) || 15))
     
     // If no query, return popular/featured items instead of empty array
     const searchQuery = q.length < 2 ? (type === "mod" ? "fabric" : type === "datapack" ? "vanilla" : "essentials") : q
-    const results = await pluginInstaller.search(searchQuery, { type, source })
-    res.json(results)
+    const data = await pluginInstaller.search(searchQuery, { type, source, limit, offset })
+    res.json(data)
   } catch (error) {
     next(error)
   }
@@ -445,7 +465,8 @@ router.get("/:serverId/plugins", requireAuth, resolveServer, async (req, res, ne
     const files = await pteroManage.listFiles(req.ptero.uuid, req.ptero.node, dir)
     res.json(files.filter((f) => f.is_file && f.name.endsWith(".jar")))
   } catch (error) {
-    if (error.statusCode === 404) return res.json([])
+    // Wings returns 404 or 500 when the directory doesn't exist yet (mapped to 404/502)
+    if (error.statusCode === 404 || error.statusCode === 502) return res.json([])
     next(error)
   }
 })
@@ -527,6 +548,7 @@ router.get("/:serverId/settings", requireAuth, resolveServer, async (req, res, n
       identifier: req.ptero.identifier,
       uuid: req.ptero.uuid,
       node: req.ptero.node,
+      node_fqdn: req.ptero.node_fqdn || null,
       limits: req.ptero.limits,
       feature_limits: req.ptero.feature_limits,
       allocations: req.ptero.allocations,
@@ -573,9 +595,69 @@ router.put(
 
 const playerSchema = z.object({
   body: z.object({
-    action: z.enum(["list", "kick", "ban", "op", "deop", "pardon"]),
-    player: z.string().max(32).optional()
+    action: z.enum(["kick", "ban", "op", "deop", "pardon", "whitelist_add", "whitelist_remove", "gamemode", "tp", "give", "say", "kill_player"]),
+    player: z.string().min(1).max(32),
+    args: z.string().max(200).optional()
   })
+})
+
+/** GET /:serverId/players/online — Real-time online player list via Wings WebSocket */
+router.get("/:serverId/players/online", requireAuth, resolveServer, async (req, res, next) => {
+  try {
+    const lines = await pteroManage.sendCommandAndCapture(
+      req.ptero.uuid, req.ptero.node, "list", 2500
+    )
+
+    // Parse Minecraft "list" command output
+    // Typical formats:
+    //   "There are 3 of a max of 20 players online: Player1, Player2, Player3"
+    //   "There are 0 of a max of 20 players online:"
+    //   Vanilla 1.7+: "[Server thread/INFO]: There are 2 of a max of 20 players online:"
+    //   then next line: "[Server thread/INFO]: Player1, Player2"
+    let online = 0, max = 0, players = []
+
+    const allText = lines.join("\n")
+    // Match the count line
+    const countMatch = allText.match(/There are (\d+) of a max(?: of| ) (\d+) players? online/)
+    if (countMatch) {
+      online = parseInt(countMatch[1], 10)
+      max = parseInt(countMatch[2], 10)
+    }
+
+    if (online > 0) {
+      // Try to extract player names after the colon on the same line
+      const colonMatch = allText.match(/players? online:\s*(.+)/i)
+      if (colonMatch) {
+        const nameStr = colonMatch[1].trim()
+        if (nameStr.length > 0) {
+          players = nameStr.split(",").map((n) => n.trim()).filter(Boolean)
+        }
+      }
+      // Some servers put players on the next line after the count line
+      if (players.length === 0 && online > 0) {
+        for (const line of lines) {
+          // Skip the count line itself and log prefix lines
+          const stripped = line.replace(/^\[.*?\]:\s*/, "").trim()
+          if (stripped && !stripped.includes("There are") && !stripped.includes("players online")) {
+            // This might be the player names line
+            const names = stripped.split(",").map((n) => n.trim()).filter(Boolean)
+            if (names.length > 0 && names.every((n) => /^[a-zA-Z0-9_]{1,32}$/.test(n))) {
+              players = names
+              break
+            }
+          }
+        }
+      }
+    }
+
+    res.json({ online, max, players })
+  } catch (error) {
+    // If server is offline, return empty
+    if (error.statusCode === 502 || error.message?.includes("timeout")) {
+      return res.json({ online: 0, max: 0, players: [], offline: true })
+    }
+    next(error)
+  }
 })
 
 router.post(
@@ -585,13 +667,29 @@ router.post(
   validate(playerSchema),
   async (req, res, next) => {
     try {
-      const { action, player } = req.body
-      if (action !== "list" && !player) {
-        return res.status(400).json({ error: "Player name required" })
+      const { action, player, args } = req.body
+
+      // Build the actual Minecraft console command
+      const commandMap = {
+        kick: `kick ${player}${args ? " " + args : ""}`,
+        ban: `ban ${player}${args ? " " + args : ""}`,
+        pardon: `pardon ${player}`,
+        op: `op ${player}`,
+        deop: `deop ${player}`,
+        whitelist_add: `whitelist add ${player}`,
+        whitelist_remove: `whitelist remove ${player}`,
+        gamemode: `gamemode ${args || "survival"} ${player}`,
+        tp: `tp ${player} ${args || "~ ~ ~"}`,
+        give: `give ${player} ${args || "diamond 1"}`,
+        say: `say ${args || "Hello!"}`,
+        kill_player: `kill ${player}`
       }
-      const command = action === "list" ? "list" : `${action} ${player}`
+
+      const command = commandMap[action]
+      if (!command) return res.status(400).json({ error: "Unknown action" })
+
       await pteroManage.sendCommand(req.ptero.uuid, req.ptero.node, command)
-      res.json({ success: true, command })
+      res.json({ success: true, command, action, player })
     } catch (error) {
       next(error)
     }

@@ -1,6 +1,7 @@
 import axios from "axios"
+import { env } from "../config/env.js"
 
-const WEBHOOK_URL = process.env.DISCORD_SUPPORT_WEBHOOK_URL
+const WEBHOOK_URL = env.DISCORD_SUPPORT_WEBHOOK_URL || ""
 
 // Color codes for different events
 const COLORS = {
@@ -18,7 +19,7 @@ const COLORS = {
  * @param {string} message - Optional message content for replies
  * @param {string} adminPanelUrl - Base URL for admin panel
  */
-export async function sendTicketNotification(event, ticket, user, message = null, adminPanelUrl = process.env.FRONTEND_URL || "http://localhost:5173") {
+export async function sendTicketNotification(event, ticket, user, message = null, adminPanelUrl = env.FRONTEND_URL || "http://localhost:5173") {
   if (!WEBHOOK_URL) {
     console.warn("[WEBHOOK] Discord support webhook URL not configured")
     return

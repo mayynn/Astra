@@ -108,7 +108,11 @@ async function processGraceExpired() {
 
 export function startExpiryCron() {
   cron.schedule("*/5 * * * *", async () => {
-    await processExpiring()
-    await processGraceExpired()
+    try {
+      await processExpiring()
+      await processGraceExpired()
+    } catch (err) {
+      console.error("[CRON] Expiry cron fatal error:", err.message)
+    }
   })
 }

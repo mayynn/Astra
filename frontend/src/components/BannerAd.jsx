@@ -33,6 +33,7 @@ export default function BannerAd() {
     <div className="flex justify-center items-center p-4">
       <iframe
         srcDoc={adHtml}
+        sandbox="allow-scripts allow-popups"
         referrerPolicy="no-referrer-when-downgrade"
         style={{ width: "468px", height: "60px", border: "none", display: "block" }}
         title="Advertisement"

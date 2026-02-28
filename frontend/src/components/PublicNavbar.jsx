@@ -5,8 +5,11 @@ import Logo from "./Logo.jsx"
 
 const NAV_LINKS = [
   { to: "/", label: "Home" },
-  { to: "/plans", label: "Plans" },
+  { to: "/features", label: "Features" },
+  { to: "/locations", label: "Locations" },
   { to: "/about", label: "About" },
+  { to: "/status", label: "Status" },
+  { to: "/knowledgebase", label: "Docs" },
   { to: "/contact", label: "Contact" },
 ]
 

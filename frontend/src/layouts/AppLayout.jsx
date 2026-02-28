@@ -52,18 +52,18 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-ink-950 text-slate-100">
+    <div className="min-h-screen bg-dark-950 text-slate-100">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[auto_1fr]">
         <Sidebar />
-        <main className="px-6 py-6 lg:px-10">
-          <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-slate-800/60 bg-ink-900/60 px-4 py-4 lg:hidden">
+        <main className="px-4 py-6 sm:px-6 lg:px-10">
+          <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-white/[0.06] bg-dark-900/60 backdrop-blur-xl px-4 py-4 lg:hidden">
             <div className="flex items-center justify-between">
               <Logo size="md" />
               <div className="flex items-center gap-2">
                 {isAdmin && (
                   <NavLink
                     to="/admin"
-                    className="button-3d flex items-center gap-1 rounded-lg border border-neon-400/40 px-3 py-2 text-xs font-semibold text-neon-200"
+                    className="button-3d flex items-center gap-1 rounded-lg border border-primary-500/30 bg-primary-500/10 px-3 py-2 text-xs font-bold text-primary-300"
                   >
                     <Shield className="h-3 w-3" />
                     Admin
@@ -71,7 +71,7 @@ export default function AppLayout() {
                 )}
                 <button
                   onClick={handleLogout}
-                  className="button-3d flex items-center gap-1 rounded-lg border border-red-700/40 bg-red-900/20 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-900/30"
+                  className="button-3d flex items-center gap-1 rounded-lg border border-red-700/30 bg-red-900/20 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-900/30"
                 >
                   <LogOut className="h-3 w-3" />
                   Logout
@@ -86,8 +86,8 @@ export default function AppLayout() {
                     key={item.to}
                     to={item.to}
                     className={({ isActive }) =>
-                      `flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition ${
-                        isActive ? "bg-neon-500/20 text-neon-200" : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+                      `flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-all duration-200 ${
+                        isActive ? "bg-primary-500/15 text-primary-300 border border-primary-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200 border border-transparent"
                       }`
                     }
                   >

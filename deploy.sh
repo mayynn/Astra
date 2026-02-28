@@ -82,7 +82,7 @@ CONFIG_FILE="${HOME}/.astranodes-deploy.conf"
 
 # List of every variable the interactive wizard collects.
 CONFIG_VARS=(
-  DOMAIN SSL_EMAIL APP_DIR APP_PORT
+  DOMAIN SSL_EMAIL USE_WWW APP_DIR APP_PORT
   JWT_SECRET JWT_EXPIRES SESSION_SECRET
   DB_PATH UPLOAD_DIR
   GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET GOOGLE_CALLBACK_URL
@@ -128,6 +128,11 @@ if [[ -f "$CONFIG_FILE" ]]; then
       SESSION_SECRET="$(openssl rand -hex 32 2>/dev/null || tr -dc 'a-zA-Z0-9' </dev/urandom | head -c 64)"
       warn "SESSION_SECRET was missing from saved config — generated a new one."
     fi
+    # Default USE_WWW to 'no' for old configs that don't have it
+    if [[ -z "${USE_WWW:-}" ]]; then
+      USE_WWW="no"
+      warn "USE_WWW was missing from saved config — defaulting to 'no' (no www subdomain)."
+    fi
     success "Loaded saved config — jumping to review."
   fi
 fi
@@ -137,17 +142,18 @@ if [[ "$SKIPPED_WIZARD" != "true" ]]; then
 # ─────────────────────────────────────────────────────────────────────────────
 #  SECTION 1 — General
 # ─────────────────────────────────────────────────────────────────────────────
-header "1 / 8  General Settings"
+header "1 / 9  General Settings"
 
 ask DOMAIN    "Domain name (e.g. astranodes.cloud)"
 ask SSL_EMAIL "Email for Let's Encrypt SSL cert"
+ask_yn USE_WWW "Do you have a DNS record for www.${DOMAIN}?" "n"
 ask APP_DIR   "Install directory on this server" "/opt/astranodes"
 ask APP_PORT  "Backend API port (internal, not public)" "4000"
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  SECTION 2 — Secrets & Auth
 # ─────────────────────────────────────────────────────────────────────────────
-header "2 / 8  Secrets & Auth"
+header "2 / 9  Secrets & Auth"
 
 GEN_SECRET=$(openssl rand -hex 32 2>/dev/null || tr -dc 'a-zA-Z0-9' </dev/urandom | head -c 64)
 echo -e "  ${CYAN}Auto-generated JWT secret (press Enter to use it):${RESET}"
@@ -363,9 +369,11 @@ else
       --exclude='backend/data' \
       --exclude='backend/uploads' \
       --exclude='backend/.env' \
+      --exclude='backend/.env.*' \
       --exclude='frontend/.env' \
       --exclude='frontend/.env.*' \
       --exclude='frontend/dist' \
+      --exclude='ecosystem.production.config.cjs' \
       --exclude='*.db' \
       --exclude='*.sqlite' \
       --exclude='*.sqlite3' \
@@ -537,7 +545,7 @@ header "Writing PM2 ecosystem config"
 
 mkdir -p /var/log/pm2
 
-cat > "${APP_DIR}/ecosystem.config.cjs" <<'ECOSYSTEM'
+cat > "${APP_DIR}/ecosystem.production.config.cjs" <<'ECOSYSTEM'
 // PM2 Ecosystem — AstraNodes
 // SQLite requires fork mode (single writer — do NOT use cluster)
 module.exports = {
@@ -566,9 +574,9 @@ module.exports = {
 ECOSYSTEM
 
 # Replace the placeholder with the actual install directory
-sed -i "s|APP_DIR_PLACEHOLDER|${APP_DIR}|g" "${APP_DIR}/ecosystem.config.cjs"
+sed -i "s|APP_DIR_PLACEHOLDER|${APP_DIR}|g" "${APP_DIR}/ecosystem.production.config.cjs"
 
-success "ecosystem.config.cjs written"
+success "ecosystem.production.config.cjs written"
 
 # =============================================================================
 #  NGINX CONFIG
@@ -576,6 +584,10 @@ success "ecosystem.config.cjs written"
 header "Writing Nginx configuration"
 
 NGINX_CONF="/etc/nginx/sites-available/astranodes"
+
+# Build server_name directive based on USE_WWW setting
+NGINX_SERVER_NAMES="${DOMAIN}"
+[[ "$USE_WWW" == "yes" ]] && NGINX_SERVER_NAMES="${DOMAIN} www.${DOMAIN}"
 
 # Write HTTP-only config first — SSL paths don't exist yet so we can't include them.
 # Certbot will automatically rewrite this file to add the HTTPS block and redirect.
@@ -585,7 +597,7 @@ cat > "$NGINX_CONF" <<NGINXCONF
 server {
     listen 80;
     listen [::]:80;
-    server_name ${DOMAIN} www.${DOMAIN};
+    server_name ${NGINX_SERVER_NAMES};
 
     # Let's Encrypt ACME challenge
     location /.well-known/acme-challenge/ {
@@ -675,25 +687,17 @@ header "Obtaining SSL certificate via Let's Encrypt"
 systemctl start nginx
 systemctl enable nginx
 
-# Try with www first; if DNS for www isn't set up, fall back to domain-only
 CERT_OK=false
+CERTBOT_DOMAINS=(-d "$DOMAIN")
+[[ "$USE_WWW" == "yes" ]] && CERTBOT_DOMAINS+=(-d "www.${DOMAIN}")
+
+info "Requesting certificate for: ${CERTBOT_DOMAINS[*]}"
 certbot --nginx \
   --non-interactive \
   --agree-tos \
   --redirect \
   -m "$SSL_EMAIL" \
-  -d "$DOMAIN" \
-  -d "www.${DOMAIN}" && CERT_OK=true || true
-
-if [[ "$CERT_OK" != "true" ]]; then
-  warn "Certbot with www.${DOMAIN} failed (DNS not set up?). Retrying without www..."
-  certbot --nginx \
-    --non-interactive \
-    --agree-tos \
-    --redirect \
-    -m "$SSL_EMAIL" \
-    -d "$DOMAIN" && CERT_OK=true || true
-fi
+  "${CERTBOT_DOMAINS[@]}" && CERT_OK=true || true
 
 if [[ "$CERT_OK" == "true" ]]; then
   success "SSL certificate obtained"
@@ -714,7 +718,7 @@ cd "$APP_DIR"
 # Stop any existing instance
 pm2 delete astranodes-api 2>/dev/null || true
 
-pm2 start ecosystem.config.cjs --env production
+pm2 start ecosystem.production.config.cjs --env production
 pm2 save
 
 # Set up PM2 to start on reboot
@@ -770,5 +774,5 @@ echo -e "  ${CYAN}Useful commands:${RESET}"
 echo -e "   pm2 restart astranodes-api           # restart API"
 echo -e "   pm2 logs astranodes-api --lines 100  # recent logs"
 echo -e "   npm run set-admin <email>            # promote user to admin"
-echo -e "   git -C ${APP_DIR} pull && pm2 restart astranodes-api  # update"
+echo -e "   bash update.sh                       # safe update (backs up DB first)"
 echo ""

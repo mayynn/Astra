@@ -9,7 +9,7 @@ export default function NotFound() {
       <div className="relative group perspective-1000">
         <div className="absolute -inset-10 bg-red-500/10 blur-[100px] rounded-full animate-pulse" />
         
-        <div className="relative bg-ink-900/40 border border-white/5 rounded-[4rem] p-16 lg:p-24 backdrop-blur-3xl flex flex-col items-center text-center max-w-2xl shadow-2xl">
+        <div className="relative bg-dark-900/60 border border-white/10 rounded-[4rem] p-16 lg:p-24 backdrop-blur-3xl flex flex-col items-center text-center max-w-2xl shadow-2xl">
            <div className="h-32 w-32 rounded-[3.5rem] bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 mb-12 shadow-glow-red/20 group-hover:scale-110 transition-transform duration-700 animate-shake">
               <AlertCircle size={64} />
            </div>

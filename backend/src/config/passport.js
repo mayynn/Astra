@@ -32,8 +32,9 @@ if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
         clientID: env.GOOGLE_CLIENT_ID,
         clientSecret: env.GOOGLE_CLIENT_SECRET,
         callbackURL: `${env.OAUTH_CALLBACK_URL}/api/auth/google/callback`,
+        passReqToCallback: true,
       },
-      async (accessToken, refreshToken, profile, done) => {
+      async (req, accessToken, refreshToken, profile, done) => {
         try {
           const email = profile.emails?.[0]?.value?.toLowerCase();
           if (!email) {
@@ -43,11 +44,19 @@ if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
 
           console.log('[AUTH] Google OAuth login attempt:', email);
 
-          // Check if user exists
+          // First try to find user by OAuth provider + ID (prevents cross-provider takeover)
           let user = await getOne(
-            'SELECT id, email, role, coins, balance, oauth_provider, oauth_id FROM users WHERE email = ?',
-            [email]
+            'SELECT id, email, role, coins, balance, oauth_provider, oauth_id FROM users WHERE oauth_provider = ? AND oauth_id = ?',
+            ['google', profile.id]
           );
+
+          // If not found by OAuth ID, look up by email only if account has no OAuth provider
+          if (!user) {
+            user = await getOne(
+              'SELECT id, email, role, coins, balance, oauth_provider, oauth_id FROM users WHERE email = ? AND (oauth_provider IS NULL OR oauth_provider = \'\')',
+              [email]
+            );
+          }
 
           if (user) {
             console.log('[AUTH] Existing user found:', { id: user.id, email: user.email, role: user.role });
@@ -63,7 +72,7 @@ if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
             const username = email.split('@')[0].replace(/[^a-zA-Z0-9-]/g, '').slice(0, 20) || `user${Date.now()}`;
             const pteroPassword = randomBytes(24).toString('base64url');
             
-            let pteroId;
+            let pteroId = null;
             try {
               // Check if pterodactyl user already exists
               pteroId = await pterodactyl.getUserByEmail(email);
@@ -79,15 +88,15 @@ if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
                 });
               }
             } catch (pteroErr) {
-              console.error('[AUTH] Pterodactyl user creation failed:', pteroErr.message);
-              return done(new Error('Account provisioning failed'), null);
+              // Non-fatal: allow login with null ptero ID — will be provisioned lazily at server purchase
+              console.warn('[AUTH] Pterodactyl user creation failed (non-fatal):', pteroErr.message);
             }
 
             console.log('[AUTH] Creating new user in database:', { email, oauth_provider: 'google', pteroId });
             
             const info = await runSync(
               'INSERT INTO users (email, oauth_provider, oauth_id, pterodactyl_user_id, ip_address, email_verified) VALUES (?, ?, ?, ?, ?, ?)',
-              [email, 'google', profile.id, pteroId, '0.0.0.0', 1]
+              [email, 'google', profile.id, pteroId, req.ip || '0.0.0.0', 1]
             );
 
             console.log('[AUTH] User created with ID:', info.lastID);
@@ -124,8 +133,9 @@ if (env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET) {
         clientSecret: env.DISCORD_CLIENT_SECRET,
         callbackURL: `${env.OAUTH_CALLBACK_URL}/api/auth/discord/callback`,
         scope: ['identify', 'email'],
+        passReqToCallback: true,
       },
-      async (accessToken, refreshToken, profile, done) => {
+      async (req, accessToken, refreshToken, profile, done) => {
         try {
           const email = profile.email?.toLowerCase();
           if (!email) {
@@ -135,11 +145,19 @@ if (env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET) {
 
           console.log('[AUTH] Discord OAuth login attempt:', email);
 
-          // Check if user exists
+          // First try to find user by OAuth provider + ID (prevents cross-provider takeover)
           let user = await getOne(
-            'SELECT id, email, role, coins, balance, oauth_provider, oauth_id FROM users WHERE email = ?',
-            [email]
+            'SELECT id, email, role, coins, balance, oauth_provider, oauth_id FROM users WHERE oauth_provider = ? AND oauth_id = ?',
+            ['discord', profile.id]
           );
+
+          // If not found by OAuth ID, look up by email only if account has no OAuth provider
+          if (!user) {
+            user = await getOne(
+              'SELECT id, email, role, coins, balance, oauth_provider, oauth_id FROM users WHERE email = ? AND (oauth_provider IS NULL OR oauth_provider = \'\')',
+              [email]
+            );
+          }
 
           if (user) {
             console.log('[AUTH] Existing user found:', { id: user.id, email: user.email, role: user.role });
@@ -155,7 +173,7 @@ if (env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET) {
             const username = (profile.username || email.split('@')[0]).replace(/[^a-zA-Z0-9-]/g, '').slice(0, 20) || `user${Date.now()}`;
             const pteroPassword = randomBytes(24).toString('base64url');
             
-            let pteroId;
+            let pteroId = null;
             try {
               // Check if pterodactyl user already exists
               pteroId = await pterodactyl.getUserByEmail(email);
@@ -171,15 +189,15 @@ if (env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET) {
                 });
               }
             } catch (pteroErr) {
-              console.error('[AUTH] Pterodactyl user creation failed:', pteroErr.message);
-              return done(new Error('Account provisioning failed'), null);
+              // Non-fatal: allow login with null ptero ID — will be provisioned lazily at server purchase
+              console.warn('[AUTH] Pterodactyl user creation failed (non-fatal):', pteroErr.message);
             }
 
             console.log('[AUTH] Creating new user in database:', { email, oauth_provider: 'discord', pteroId });
 
             const info = await runSync(
               'INSERT INTO users (email, oauth_provider, oauth_id, pterodactyl_user_id, ip_address, email_verified) VALUES (?, ?, ?, ?, ?, ?)',
-              [email, 'discord', profile.id, pteroId, '0.0.0.0', 1]
+              [email, 'discord', profile.id, pteroId, req.ip || '0.0.0.0', 1]
             );
 
             console.log('[AUTH] User created with ID:', info.lastID);

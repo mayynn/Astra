@@ -259,28 +259,17 @@ Pterodactyl settings for server provisioning:
 
 - **PTERODACTYL_URL** - Full URL to your Pterodactyl panel (e.g., https://panel.example.com)
 - **PTERODACTYL_API_KEY** - Admin API key from Pterodactyl panel
-- **PTERODACTYL_DEFAULT_NODE** - Node ID where servers will be created (must be a number)
 - **PTERODACTYL_DEFAULT_EGG** - Egg ID for Minecraft servers (must be a number)
-- **PTERODACTYL_DEFAULT_ALLOCATION** - *(Optional)* Specific allocation ID for server ports. If not set, the system will automatically find and use available allocations from the node.
 - **PTERODACTYL_DEFAULT_DOCKER_IMAGE** - Docker image (e.g., ghcr.io/pterodactyl/yolks:java_17)
 - **PTERODACTYL_DEFAULT_STARTUP** - Startup command (e.g., java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar)
 - **PTERODACTYL_DEFAULT_ENV** - Environment variables as JSON. For Paper egg, use: `{"MINECRAFT_VERSION":"1.20.1","SERVER_JARFILE":"server.jar","BUILD_NUMBER":"latest"}`
 
-**Dynamic Allocation (Recommended):**
-Leave `PTERODACTYL_DEFAULT_ALLOCATION` empty to enable automatic allocation selection. The system will:
-- Automatically find available (unassigned) allocations on the node
-- Use a different allocation for each server
-- Prevent "allocation already in use" errors
-- Require no manual allocation management
+**Automatic Node & Allocation Selection:**
+Node and allocation selection is fully automatic. At each server purchase, AstraNodes queries all your panel nodes for real-time memory, disk, and allocation availability, then picks the best one. No manual node ID or allocation ID configuration is needed.
 
-**Static Allocation:**
-Set `PTERODACTYL_DEFAULT_ALLOCATION` to a specific ID if you want all servers to attempt using the same allocation (not recommended for multiple servers).
-
-**To find allocation IDs, node IDs, and egg IDs:**
-1. Login to your Pterodactyl panel as admin
-2. Navigate to Admin → Nodes → Select your node → Allocations
-3. Note the allocation ID you want to use (or leave empty for dynamic)
-4. Navigate to Admin → Nests → Eggs to find egg IDs
+Make sure each Pterodactyl node has:
+- At least a few **unassigned allocations** (ports)
+- Enough free RAM and disk for the plans you intend to offer
 
 **Test your configuration:**
 ```bash
@@ -314,12 +303,13 @@ bash deploy.sh
 
 The script will interactively ask for:
 - Your domain name (e.g. `panel.example.com`)
+- Whether you have a `www` DNS record (defaults to no)
+- OAuth credentials (Google & Discord)
 - Pterodactyl panel URL and API key
 - JWT secret
 - Discord webhook URL
-- Adsterra API credentials
-- UPI ID and name (shown on the billing page)
-- Whether to enable SSL via Let's Encrypt (Certbot)
+- Adsterra API credentials (optional)
+- UPI ID and name (shown on the billing page, optional)
 
 It then automatically:
 - Installs Node.js, Nginx, PM2, and Certbot
@@ -327,26 +317,44 @@ It then automatically:
 - Runs all database migrations
 - Builds the React frontend
 - Configures Nginx with reverse proxy + WebSocket support
-- Starts the backend with PM2 (`astra-backend`)
-- Optionally obtains and configures an SSL certificate
+- Starts the backend with PM2 (`astranodes-api`)
+- Obtains and configures an SSL certificate (domain only, or +www if opted in)
 
 ### After Deployment
 
 | Task | Command |
 |------|---------|
-| View logs | `pm2 logs astra-backend` |
-| Restart backend | `pm2 restart astra-backend` |
+| View logs | `pm2 logs astranodes-api` |
+| Restart backend | `pm2 restart astranodes-api` |
 | Check status | `pm2 status` |
-| Update deployment | `git pull && bash deploy.sh` |
+| **Update (safe)** | `bash update.sh` |
+
+> **`update.sh` automatically backs up your database** before pulling code. It preserves your `.env`, database, uploads, and PM2 config. See [VPS_GUIDE.md](VPS_GUIDE.md) for details.
 
 ### Create Admin User (after deploy)
+
+Authentication is OAuth-only (Google & Discord). After your first login:
+
 ```bash
-cd /path/to/Astra/backend
-npm run create-admin
+cd /opt/astranodes/backend
+npm run set-admin your-email@example.com
 ```
+
+Log out and back in — the Admin Panel link will appear.
 
 ### Environment File
 Your production environment variables live at `backend/.env`. Reference `backend/.env.production.example` for all available options with descriptions.
+
+### Production File Safety
+
+The following files are **gitignored** and will never be overwritten by `git pull` or `bash update.sh`:
+
+- `backend/.env` — all backend secrets
+- `frontend/.env.production` — frontend API URL
+- `backend/data/` — SQLite database + WAL files
+- `backend/data/backups/` — automatic DB backups (created by `update.sh`)
+- `backend/uploads/` — user-uploaded files
+- `ecosystem.production.config.cjs` — PM2 config with your install paths
 
 ---
 

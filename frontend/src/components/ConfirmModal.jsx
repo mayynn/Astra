@@ -28,19 +28,19 @@ export default function ConfirmModal({
   const variantCls =
     confirmVariant === "danger"
       ? "bg-red-900/30 border border-red-700/40 text-red-200 hover:bg-red-900/50"
-      : "bg-neon-500/20 border border-neon-500/30 text-neon-200 hover:bg-neon-500/30"
+      : "bg-primary-500/15 border border-primary-500/30 text-primary-300 hover:bg-primary-500/25"
 
   return (
     <div
       className="fixed inset-0 z-[9500] flex items-center justify-center p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="absolute inset-0 bg-ink-950/70 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-dark-950/80 backdrop-blur-sm" />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className="relative glass w-full max-w-md rounded-3xl border border-slate-700/50 p-8 shadow-soft animate-fade-up"
+        className="relative w-full max-w-md rounded-2xl bg-dark-800/90 backdrop-blur-xl border border-white/10 p-8 shadow-2xl animate-slide-up"
       >
         <button
           onClick={onClose}
@@ -60,7 +60,7 @@ export default function ConfirmModal({
             </h2>
             <p className="text-sm text-slate-400">{message}</p>
             {detail && (
-              <p className="mt-2 rounded-lg border border-slate-800/60 bg-ink-900/60 px-3 py-2 text-xs text-slate-500">
+              <p className="mt-2 rounded-lg border border-white/[0.06] bg-dark-900/60 px-3 py-2 text-xs text-slate-500">
                 {detail}
               </p>
             )}

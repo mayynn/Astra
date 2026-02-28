@@ -61,6 +61,7 @@ export default function AdminPanel() {
   const [approving, setApproving] = useState({})
   const [suspending, setSuspending] = useState({})
   const [deleting, setDeleting] = useState({})
+  const [deletingPlan, setDeletingPlan] = useState(false)
   const [deletingUser, setDeletingUser] = useState({})
   const [planModal, setPlanModal] = useState({ open: false, type: null, mode: 'create', data: null })
   const [planForm, setPlanForm] = useState({})
@@ -319,7 +320,7 @@ export default function AdminPanel() {
   }
 
   const handleDeletePlan = async () => {
-    setDeleting(true)
+    setDeletingPlan(true)
     setError("")
 
     try {
@@ -344,7 +345,7 @@ export default function AdminPanel() {
     } catch (err) {
       setError(err.message)
     } finally {
-      setDeleting(false)
+      setDeletingPlan(false)
     }
   }
 
@@ -1207,14 +1208,14 @@ export default function AdminPanel() {
             <div className="flex gap-3">
               <button
                 onClick={handleDeletePlan}
-                disabled={deleting}
+                disabled={deletingPlan}
                 className="flex-1 px-6 py-3 rounded-lg bg-red-900/30 hover:bg-red-900/50 text-red-300 font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {deleting ? 'Deleting...' : 'Delete'}
+                {deletingPlan ? 'Deleting...' : 'Delete'}
               </button>
               <button
                 onClick={() => setDeleteModal({ open: false, type: null, id: null })}
-                disabled={deleting}
+                disabled={deletingPlan}
                 className="px-6 py-3 rounded-lg bg-slate-800/60 hover:bg-slate-700/60 text-slate-300 font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Cancel

@@ -74,9 +74,9 @@ export default function CouponRedeem() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-slate-100">Redeem coupon</h1>
+        <h1 className="text-3xl font-bold text-white">Redeem coupon</h1>
         <p className="text-sm text-slate-400">One code per IP. Abuse prevention is enforced automatically.</p>
       </div>
       <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">

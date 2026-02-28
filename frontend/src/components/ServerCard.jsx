@@ -29,15 +29,28 @@ export default function ServerCard({ server, onRenew, renewing, countdown, grace
   }
 
   return (
-    <div className="h-full flex flex-col rounded-xl border border-white/10 bg-dark-800 p-6 hover:border-white/20 transition-colors">
-      <div className="flex items-start justify-between gap-3 mb-4">
+    <div className="card-3d group h-full flex flex-col rounded-xl border border-white/10 bg-dark-800/60 backdrop-blur-sm p-6 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary-500/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+      <div className="flex items-start justify-between gap-3 mb-4 relative">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
-            <Server className="h-4 w-4 text-primary-400" />
+            <div className="w-8 h-8 rounded-lg bg-primary-500/10 border border-primary-500/20 flex items-center justify-center">
+              <Server className="h-4 w-4 text-primary-400" />
+            </div>
             <h3 className="text-lg font-semibold text-white">{server.name}</h3>
           </div>
           <p className="text-sm text-slate-400">{server.plan}</p>
-          {server.location && (
+          {server.ip && server.port && (
+            <p
+              className="flex items-center gap-1 text-xs text-slate-400 mt-1 cursor-pointer hover:text-primary-300 transition-colors"
+              title="Click to copy address"
+              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(`${server.ip}:${server.port}`) }}
+            >
+              <MapPin className="h-3 w-3" />
+              {server.ip}:{server.port}
+            </p>
+          )}
+          {server.location && !(server.ip && server.port) && (
             <p className="flex items-center gap-1 text-xs text-slate-500 mt-1">
               <MapPin className="h-3 w-3" />
               {server.location}
@@ -98,17 +111,17 @@ export default function ServerCard({ server, onRenew, renewing, countdown, grace
       </div>
 
       {server.status !== "deleted" && (
-        <div className="flex gap-3 mt-auto pt-4 border-t border-white/10">
+        <div className="flex gap-3 mt-auto pt-4 border-t border-white/[0.06] relative">
           <button
             onClick={handleManage}
-            className="flex-1 rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-600 transition-colors"
+            className="button-3d flex-1 rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-400 hover:to-primary-500 px-4 py-2.5 text-sm font-semibold text-white shadow-glow-primary transition-all"
           >
             Manage
           </button>
           <button
             onClick={() => onRenew && onRenew(server.id)}
             disabled={renewing}
-            className="flex-1 rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="button-3d flex-1 rounded-lg border border-white/10 hover:border-white/20 bg-dark-700/60 hover:bg-dark-600/60 px-4 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {renewing ? "Renewing..." : "Renew"}
           </button>

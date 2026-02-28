@@ -45,7 +45,11 @@ export default function ServerManage() {
     if (!token) { navigate("/login"); return }
 
     api.getServerManage(token, id)
-      .then((data) => setServerInfo(data))
+      .then((data) => {
+        setServerInfo(data)
+        // Initialize EULA state from server response
+        if (data?.eula_accepted) setEulaAccepted(true)
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
   }, [id, navigate])
@@ -100,6 +104,16 @@ export default function ServerManage() {
   const res = serverInfo?.resources
   const defaultAlloc = srv?.allocations?.find((a) => a.is_default) || srv?.allocations?.[0]
 
+  // Resolve display IP: prefer ip_alias, then node_fqdn if allocation IP is unusable (0.0.0.0 or private)
+  const resolveDisplayIp = (alloc) => {
+    if (!alloc) return null
+    if (alloc.ip_alias) return alloc.ip_alias
+    const ip = alloc.ip
+    if (ip && ip !== "0.0.0.0" && !ip.startsWith("10.") && !ip.startsWith("172.") && !ip.startsWith("192.168.")) return ip
+    return srv?.node_fqdn || ip || "N/A"
+  }
+  const displayAddress = defaultAlloc ? `${resolveDisplayIp(defaultAlloc)}:${defaultAlloc.port}` : "No allocation"
+
   const powerBtns = [
     { signal: "start",   icon: Play,      label: "Start",   cls: "text-green-300 border-green-700/40 bg-green-900/20 hover:bg-green-900/30" },
     { signal: "stop",    icon: Square,     label: "Stop",    cls: "text-orange-300 border-orange-700/40 bg-orange-900/20 hover:bg-orange-900/30" },
@@ -108,7 +122,7 @@ export default function ServerManage() {
   ]
 
   const tabContent = {
-    console:    <ConsoleTab serverId={id} />,
+    console:    <ConsoleTab serverId={id} serverInfo={serverInfo} />,
     files:      <FilesTab serverId={id} />,
     properties: <PropertiesTab serverId={id} />,
     world:      <WorldTab serverId={id} />,
@@ -120,20 +134,26 @@ export default function ServerManage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate("/servers")}
-            className="rounded-lg border border-slate-700/40 p-2 text-slate-400 hover:text-slate-200 hover:border-slate-600"
+            className="button-3d rounded-lg border border-white/10 bg-dark-800/60 p-2 text-slate-400 hover:text-white hover:border-white/20 transition-all"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-slate-100">{srv?.name}</h1>
-            <p className="text-xs text-slate-500">
-              {defaultAlloc ? `${defaultAlloc.ip}:${defaultAlloc.port}` : "No allocation"}{" "}
+            <h1 className="text-xl font-bold text-white">{srv?.name}</h1>
+            <p className="text-xs text-slate-500 flex items-center gap-1.5">
+              <span
+                className="cursor-pointer hover:text-primary-400 font-mono transition"
+                title="Click to copy"
+                onClick={() => { navigator.clipboard.writeText(displayAddress); }}
+              >
+                {displayAddress}
+              </span>
               · Node {srv?.node}
             </p>
           </div>
@@ -149,7 +169,7 @@ export default function ServerManage() {
                 key={b.signal}
                 onClick={() => handlePower(b.signal)}
                 disabled={!!powerLoading}
-                className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${b.cls}`}
+                className={`button-3d flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${b.cls}`}
               >
                 {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
                 {b.label}
@@ -159,20 +179,6 @@ export default function ServerManage() {
         </div>
       </div>
 
-      {/* ── Resource bar ────────────────────────────────────────────────── */}
-      {res && (
-        <div className="flex flex-wrap gap-4 rounded-xl border border-slate-800/60 bg-ink-900/70 px-4 py-3 text-xs text-slate-400">
-          <span>
-            Status: <b className={res.current_state === "running" ? "text-green-300" : "text-orange-300"}>
-              {res.current_state || "unknown"}
-            </b>
-          </span>
-          <span>RAM: <b className="text-slate-200">{Math.round((res.resources?.memory_bytes || 0) / 1024 / 1024)}MB / {srv?.limits?.memory}MB</b></span>
-          <span>CPU: <b className="text-slate-200">{(res.resources?.cpu_absolute || 0).toFixed(1)}%</b></span>
-          <span>Disk: <b className="text-slate-200">{Math.round((res.resources?.disk_bytes || 0) / 1024 / 1024)}MB / {srv?.limits?.disk}MB</b></span>
-        </div>
-      )}
-
       {/* ── EULA Banner ───────────────────────────────────────────────── */}
       {!eulaAccepted && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-yellow-700/30 bg-yellow-900/15 px-4 py-3 text-sm text-yellow-200">
@@ -181,7 +187,7 @@ export default function ServerManage() {
             <a href="https://www.minecraft.net/eula" target="_blank" rel="noreferrer" className="underline hover:text-yellow-100">
               Minecraft EULA
             </a>{" "}
-            for the server to start. Clicking "Start" will auto-accept it.
+            for the server to start.
           </span>
           <button
             onClick={handleAcceptEula}
@@ -193,11 +199,6 @@ export default function ServerManage() {
           </button>
         </div>
       )}
-      {eulaAccepted && (
-        <div className="rounded-xl border border-green-700/30 bg-green-900/15 px-4 py-2 text-xs text-green-300 font-semibold">
-          ✓ EULA accepted — you can now start the server.
-        </div>
-      )}
 
       {error && (
         <div className="rounded-lg bg-red-900/20 border border-red-700/30 p-3 text-sm text-red-300">
@@ -206,7 +207,7 @@ export default function ServerManage() {
       )}
 
       {/* ── Tab navigation ──────────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-1.5 rounded-xl border border-slate-800/60 bg-ink-900/70 p-1.5">
+      <div className="flex flex-wrap gap-1.5 rounded-xl border border-white/[0.06] bg-dark-900/80 backdrop-blur-sm p-1.5">
         {tabs.map((tab) => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
@@ -214,10 +215,10 @@ export default function ServerManage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
                 isActive
-                  ? "bg-neon-500/15 text-neon-200 border border-neon-400/30"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent"
+                  ? "bg-primary-500/15 text-primary-300 border border-primary-500/30 shadow-sm shadow-primary-500/10"
+                  : "text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent"
               }`}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -228,9 +229,15 @@ export default function ServerManage() {
       </div>
 
       {/* ── Tab content ─────────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-slate-800/60 bg-ink-900/70 p-6">
-        {tabContent[activeTab]}
-      </div>
+      {/* Render all tabs but hide inactive ones so Console keeps its WS connection alive */}
+      {Object.entries(tabContent).map(([key, content]) => (
+        <div
+          key={key}
+          className={`rounded-2xl border border-white/[0.06] bg-dark-900/80 backdrop-blur-sm p-6 ${key === activeTab ? "" : "hidden"}`}
+        >
+          {content}
+        </div>
+      ))}
     </div>
   )
 }

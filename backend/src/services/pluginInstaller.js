@@ -34,16 +34,16 @@ function hasCurseForge() {
 
 /* ── Modrinth ─────────────────────────────────────────────────────────────── */
 
-async function searchModrinth(query, type = "plugin", limit = 15) {
+async function searchModrinth(query, type = "plugin", limit = 15, offset = 0) {
   const projectType = PROJECT_TYPES[type] || PROJECT_TYPES.plugin
   const facets = [[projectType.facet]]
 
   const res = await axios.get(`${MODRINTH_API}/search`, {
-    params: { query, limit, facets: JSON.stringify(facets), index: "relevance" },
+    params: { query, limit, offset, facets: JSON.stringify(facets), index: "relevance" },
     timeout: 10000
   })
 
-  return res.data.hits.map((p) => ({
+  const hits = res.data.hits.map((p) => ({
     source: "modrinth",
     id: p.slug,
     slug: p.slug,
@@ -60,6 +60,8 @@ async function searchModrinth(query, type = "plugin", limit = 15) {
     project_type: p.project_type,
     type
   }))
+
+  return { results: hits, total: res.data.total_hits || hits.length, offset, limit }
 }
 
 async function getModrinthVersions(slug) {
@@ -149,8 +151,8 @@ async function installFromModrinth(serverUuid, nodeId, slug, type = "plugin", ve
 
 /* ── CurseForge ───────────────────────────────────────────────────────────── */
 
-async function searchCurseForge(query, type = "plugin", limit = 15) {
-  if (!hasCurseForge()) return []
+async function searchCurseForge(query, type = "plugin", limit = 15, offset = 0) {
+  if (!hasCurseForge()) return { results: [], total: 0, offset, limit }
 
   const classId = type === "mod" ? CF_CLASS_MODS : CF_CLASS_PLUGINS
 
@@ -161,13 +163,14 @@ async function searchCurseForge(query, type = "plugin", limit = 15) {
       classId,
       searchFilter: query,
       pageSize: limit,
+      index: offset,
       sortField: 2, // Popularity
       sortOrder: "desc"
     },
     timeout: 10000
   })
 
-  return (res.data?.data || []).map((m) => ({
+  const items = (res.data?.data || []).map((m) => ({
     source: "curseforge",
     id: String(m.id),
     slug: m.slug,
@@ -181,6 +184,8 @@ async function searchCurseForge(query, type = "plugin", limit = 15) {
     _cfId: m.id,
     _cfLatestFileId: m.mainFileId || m.latestFiles?.[0]?.id
   }))
+
+  return { results: items, total: res.data?.pagination?.totalCount || items.length, offset, limit }
 }
 
 async function installFromCurseForge(serverUuid, nodeId, projectId, fileId, type = "plugin") {
@@ -251,19 +256,21 @@ export const pluginInstaller = {
    * @param {string} query
    * @param {object} opts - { type: "plugin"|"mod"|"datapack"|"shader"|"resourcepack"|"modpack", source: "modrinth"|"curseforge"|"all", limit }
    */
-  async search(query, { type = "plugin", source = "all", limit = 15 } = {}) {
+  async search(query, { type = "plugin", source = "all", limit = 15, offset = 0 } = {}) {
     const promises = []
 
     if (source === "modrinth" || source === "all") {
-      promises.push(searchModrinth(query, type, limit).catch(() => []))
+      promises.push(searchModrinth(query, type, limit, offset).catch(() => ({ results: [], total: 0 })))
     }
     // CurseForge only supports plugins and mods
     if ((source === "curseforge" || source === "all") && hasCurseForge() && ["plugin", "mod"].includes(type)) {
-      promises.push(searchCurseForge(query, type, limit).catch(() => []))
+      promises.push(searchCurseForge(query, type, limit, offset).catch(() => ({ results: [], total: 0 })))
     }
 
-    const arrays = await Promise.all(promises)
-    return arrays.flat()
+    const responses = await Promise.all(promises)
+    const results = responses.flatMap((r) => r.results)
+    const total = Math.max(...responses.map((r) => r.total), 0)
+    return { results, total, offset, limit }
   },
 
   /**

@@ -1,6 +1,7 @@
 import { Router } from "express"
 import { query } from "../config/db.js"
 import { pterodactyl } from "../services/pterodactyl.js"
+import { requireAuth } from "../middlewares/auth.js"
 
 const router = Router()
 
@@ -22,7 +23,7 @@ router.get("/real", async (req, res, next) => {
   }
 })
 
-router.get("/eggs", async (req, res, next) => {
+router.get("/eggs", requireAuth, async (req, res, next) => {
   try {
     const eggs = await pterodactyl.getAvailableEggs()
     res.json(eggs)

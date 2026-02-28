@@ -1,5 +1,7 @@
 import { appApi } from "../config/ptero.js"
-import { wingsRequest } from "../config/wingsClient.js"
+import { wingsRequest, createWingsToken } from "../config/wingsClient.js"
+import { env } from "../config/env.js"
+import WebSocket from "ws"
 
 function handleError(error, action) {
   console.error(`[PTERO-MANAGE] ${action} failed:`, {
@@ -20,6 +22,16 @@ export const pteroManage = {
     try {
       const res = await appApi.get(`/servers/${pteroServerId}?include=allocations`)
       const a = res.data.attributes
+
+      // Fetch node FQDN so the frontend can show the real connection address
+      let nodeFqdn = null
+      try {
+        const nodeRes = await appApi.get(`/nodes/${a.node}`)
+        nodeFqdn = nodeRes.data.attributes.fqdn || null
+      } catch {
+        /* non-fatal */
+      }
+
       return {
         id: a.id,
         identifier: a.identifier,
@@ -31,12 +43,14 @@ export const pteroManage = {
         limits: a.limits,
         feature_limits: a.feature_limits,
         node: a.node,
+        node_fqdn: nodeFqdn,
         egg: a.egg,
         container: a.container,
         allocations:
           a.relationships?.allocations?.data?.map((al) => ({
             id: al.attributes.id,
             ip: al.attributes.ip,
+            ip_alias: al.attributes.alias || null,
             port: al.attributes.port,
             is_default: al.attributes.is_default
           })) || []
@@ -258,5 +272,174 @@ export const pteroManage = {
     } catch (error) {
       handleError(error, "Update startup variable")
     }
+  },
+
+  /* ── Backup Management (Wings Direct API) ────────────────────────────── */
+  /*   All backup methods talk directly to Wings daemon — no Client API     */
+  /*   (PTLC_) key required.                                                */
+
+  /** Create a backup on Wings */
+  async createBackup(serverUuid, nodeId, backupUuid, ignoredFiles = "") {
+    try {
+      console.log(`[PTERO-MANAGE] Creating backup ${backupUuid} via Wings...`)
+      await wingsRequest(nodeId, serverUuid, "POST", "/backup", {
+        data: {
+          adapter: "wings",
+          uuid: backupUuid,
+          ignore: ignoredFiles
+        },
+        timeout: 120000
+      })
+      console.log(`[PTERO-MANAGE] ✓ Backup created: ${backupUuid}`)
+      return { success: true }
+    } catch (error) {
+      handleError(error, "Create backup")
+    }
+  },
+
+  /** List backups stored on Wings for a server */
+  async listBackups(serverUuid, nodeId) {
+    try {
+      const res = await wingsRequest(nodeId, serverUuid, "GET", "/backup")
+      // Wings returns an array of backup objects
+      return res.data || []
+    } catch (error) {
+      // 404 means no backups directory yet — that's OK
+      if (error.response?.status === 404) return []
+      handleError(error, "List backups")
+    }
+  },
+
+  /** Delete a backup from Wings */
+  async deleteBackup(serverUuid, nodeId, backupUuid) {
+    try {
+      console.log(`[PTERO-MANAGE] Deleting backup ${backupUuid} via Wings...`)
+      await wingsRequest(nodeId, serverUuid, "DELETE", `/backup/${backupUuid}`)
+      console.log(`[PTERO-MANAGE] ✓ Backup deleted: ${backupUuid}`)
+      return { success: true }
+    } catch (error) {
+      if (error.response?.status === 404) {
+        console.log(`[PTERO-MANAGE] Backup already gone (404): ${backupUuid}`)
+        return { success: true }
+      }
+      handleError(error, "Delete backup")
+    }
+  },
+
+  /** Restore a backup via Wings */
+  async restoreBackup(serverUuid, nodeId, backupUuid) {
+    try {
+      console.log(`[PTERO-MANAGE] Restoring backup ${backupUuid} via Wings...`)
+      await wingsRequest(nodeId, serverUuid, "POST", `/backup/${backupUuid}/restore`, {
+        data: { adapter: "wings", truncate: false },
+        timeout: 300000
+      })
+      console.log(`[PTERO-MANAGE] ✓ Backup restore initiated: ${backupUuid}`)
+      return { success: true }
+    } catch (error) {
+      handleError(error, "Restore backup")
+    }
+  },
+
+  /** Get download URL for a backup from Wings (uses a signed JWT) */
+  async getBackupDownloadUrl(serverUuid, nodeId, backupUuid) {
+    try {
+      console.log(`[PTERO-MANAGE] Getting download URL for backup ${backupUuid}...`)
+      const { getNodeConfig } = await import("../config/wingsClient.js")
+      const { default: jwt } = await import("jsonwebtoken")
+      const { randomUUID } = await import("crypto")
+
+      const node = await getNodeConfig(nodeId)
+
+      // Wings /download/backup expects a JWT signed with the daemon token
+      const downloadToken = jwt.sign(
+        {
+          server_uuid: serverUuid,
+          backup_uuid: backupUuid,
+          unique_id: randomUUID()
+        },
+        node.token,
+        { algorithm: "HS256", expiresIn: "15m" }
+      )
+
+      const url = `${node.scheme}://${node.fqdn}:${node.port}/download/backup?token=${downloadToken}`
+      console.log(`[PTERO-MANAGE] ✓ Got download URL`)
+      return url
+    } catch (error) {
+      handleError(error, "Get backup download URL")
+    }
+  },
+
+  /**
+   * Open a temporary Wings WebSocket, send a command, capture console output
+   * lines for a short window, then close. Returns array of output lines.
+   *
+   * @param {string} serverUuid
+   * @param {number} nodeId
+   * @param {string} command - Console command to execute
+   * @param {number} [timeoutMs=3000] - How long to capture output after sending
+   * @returns {Promise<string[]>} Captured console output lines
+   */
+  async sendCommandAndCapture(serverUuid, nodeId, command, timeoutMs = 3000) {
+    const creds = await createWingsToken(nodeId, serverUuid)
+
+    return new Promise((resolve, reject) => {
+      const lines = []
+      let authed = false
+      const ws = new WebSocket(creds.socket, {
+        headers: {
+          Authorization: `Bearer ${creds.bearerToken}`,
+          Origin: env.PTERODACTYL_URL || ""
+        },
+        rejectUnauthorized: false,
+        handshakeTimeout: 8000
+      })
+
+      const cleanup = () => {
+        try { ws.close() } catch { /* */ }
+      }
+
+      const authTimeout = setTimeout(() => {
+        cleanup()
+        reject(new Error("Wings auth timeout"))
+      }, 10000)
+
+      ws.on("open", () => {
+        ws.send(JSON.stringify({ event: "auth", args: [creds.token] }))
+      })
+
+      ws.on("message", (raw) => {
+        try {
+          const msg = JSON.parse(raw.toString())
+          if (msg.event === "auth success") {
+            authed = true
+            clearTimeout(authTimeout)
+            // Send the command once authenticated
+            ws.send(JSON.stringify({ event: "send command", args: [command] }))
+            // Capture output for the window, then resolve
+            setTimeout(() => {
+              cleanup()
+              resolve(lines)
+            }, timeoutMs)
+          } else if (msg.event === "console output" && authed) {
+            lines.push(msg.args?.[0] ?? "")
+          } else if (msg.event === "jwt error") {
+            clearTimeout(authTimeout)
+            cleanup()
+            reject(new Error("Wings JWT rejected"))
+          }
+        } catch { /* ignore */ }
+      })
+
+      ws.on("error", (err) => {
+        clearTimeout(authTimeout)
+        reject(err)
+      })
+
+      ws.on("close", () => {
+        clearTimeout(authTimeout)
+        // If already resolved by timeout, this is harmless
+      })
+    })
   }
 }

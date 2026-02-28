@@ -87,9 +87,11 @@ router.get("/users", async (req, res, next) => {
 
 router.patch("/users/:id/flag", validate(flagSchema), async (req, res, next) => {
   try {
+    const userId = Number(req.params.id)
+    if (!userId || isNaN(userId)) return res.status(400).json({ error: "Invalid user ID" })
     await runSync(
       "UPDATE users SET flagged = ? WHERE id = ?",
-      [req.body.flagged ? 1 : 0, req.params.id]
+      [req.body.flagged ? 1 : 0, userId]
     )
     res.json({ status: "ok" })
   } catch (error) {
@@ -283,7 +285,17 @@ router.put("/plans/real/:id", validate(realPlanSchema), async (req, res, next) =
 
 router.delete("/plans/coin/:id", async (req, res, next) => {
   try {
-    await runSync("DELETE FROM plans_coin WHERE id = ?", [req.params.id])
+    const planId = Number(req.params.id)
+    if (!planId || isNaN(planId)) return res.status(400).json({ error: "Invalid plan ID" })
+    // Check for active servers using this plan
+    const activeServer = await getOne(
+      "SELECT id FROM servers WHERE plan_type = 'coin' AND plan_id = ? AND status IN ('active', 'suspended')",
+      [planId]
+    )
+    if (activeServer) {
+      return res.status(400).json({ error: "Cannot delete plan — active servers are using it" })
+    }
+    await runSync("DELETE FROM plans_coin WHERE id = ?", [planId])
     res.json({ status: "ok" })
   } catch (error) {
     next(error)
@@ -292,7 +304,17 @@ router.delete("/plans/coin/:id", async (req, res, next) => {
 
 router.delete("/plans/real/:id", async (req, res, next) => {
   try {
-    await runSync("DELETE FROM plans_real WHERE id = ?", [req.params.id])
+    const planId = Number(req.params.id)
+    if (!planId || isNaN(planId)) return res.status(400).json({ error: "Invalid plan ID" })
+    // Check for active servers using this plan
+    const activeServer = await getOne(
+      "SELECT id FROM servers WHERE plan_type = 'real' AND plan_id = ? AND status IN ('active', 'suspended')",
+      [planId]
+    )
+    if (activeServer) {
+      return res.status(400).json({ error: "Cannot delete plan — active servers are using it" })
+    }
+    await runSync("DELETE FROM plans_real WHERE id = ?", [planId])
     res.json({ status: "ok" })
   } catch (error) {
     next(error)
@@ -355,7 +377,9 @@ router.put("/coupons/:id", validate(couponSchema), async (req, res, next) => {
 
 router.delete("/coupons/:id", async (req, res, next) => {
   try {
-    await runSync("DELETE FROM coupons WHERE id = ?", [req.params.id])
+    const couponId = Number(req.params.id)
+    if (!couponId || isNaN(couponId)) return res.status(400).json({ error: "Invalid coupon ID" })
+    await runSync("DELETE FROM coupons WHERE id = ?", [couponId])
     res.json({ status: "ok" })
   } catch (error) {
     next(error)
@@ -397,7 +421,9 @@ router.get("/servers/suspended", async (req, res, next) => {
 
 router.post("/servers/:id/suspend", async (req, res, next) => {
   try {
-    const server = await getOne("SELECT * FROM servers WHERE id = ?", [req.params.id])
+    const serverId = Number(req.params.id)
+    if (!serverId || isNaN(serverId)) return res.status(400).json({ error: "Invalid server ID" })
+    const server = await getOne("SELECT * FROM servers WHERE id = ?", [serverId])
     if (!server) {
       return res.status(404).json({ error: "Server not found" })
     }
@@ -416,7 +442,9 @@ router.post("/servers/:id/suspend", async (req, res, next) => {
 
 router.delete("/servers/:id", async (req, res, next) => {
   try {
-    const server = await getOne("SELECT * FROM servers WHERE id = ?", [req.params.id])
+    const serverId = Number(req.params.id)
+    if (!serverId || isNaN(serverId)) return res.status(400).json({ error: "Invalid server ID" })
+    const server = await getOne("SELECT * FROM servers WHERE id = ?", [serverId])
     if (!server) {
       return res.status(404).json({ error: "Server not found" })
     }
@@ -455,7 +483,9 @@ router.get("/utr", async (req, res, next) => {
 
 router.patch("/utr/:id/approve", async (req, res, next) => {
   try {
-    const submission = await approveSubmission(req.params.id)
+    const utrId = Number(req.params.id)
+    if (!utrId || isNaN(utrId)) return res.status(400).json({ error: "Invalid UTR ID" })
+    const submission = await approveSubmission(utrId)
     await deleteScreenshot(submission.screenshot_path)
     res.json({ status: "approved" })
   } catch (error) {
@@ -465,7 +495,9 @@ router.patch("/utr/:id/approve", async (req, res, next) => {
 
 router.patch("/utr/:id/reject", async (req, res, next) => {
   try {
-    const submission = await rejectSubmission(req.params.id)
+    const utrId = Number(req.params.id)
+    if (!utrId || isNaN(utrId)) return res.status(400).json({ error: "Invalid UTR ID" })
+    const submission = await rejectSubmission(utrId)
     await deleteScreenshot(submission.screenshot_path)
     res.json({ status: "rejected" })
   } catch (error) {

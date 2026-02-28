@@ -57,6 +57,17 @@ export default function SettingsTab({ serverId }) {
   const res = settings.resources?.resources || {}
   const limits = settings.limits || {}
 
+  // Resolve display IP: prefer ip_alias, then node_fqdn if allocation IP is unusable
+  const resolveDisplayIp = (alloc) => {
+    if (!alloc) return "N/A"
+    if (alloc.ip_alias) return alloc.ip_alias
+    const ip = alloc.ip
+    if (ip && ip !== "0.0.0.0" && !ip.startsWith("10.") && !ip.startsWith("172.") && !ip.startsWith("192.168.")) return ip
+    return settings.node_fqdn || ip || "N/A"
+  }
+  const defaultAlloc = settings.allocations?.[0]
+  const displayAddress = defaultAlloc ? `${resolveDisplayIp(defaultAlloc)}:${defaultAlloc.port}` : "N/A"
+
   return (
     <div className="space-y-6">
       {/* ── Resource usage ──────────────────────────────────────────────── */}
@@ -95,7 +106,7 @@ export default function SettingsTab({ serverId }) {
             ["Identifier", settings.identifier],
             ["Node", settings.node],
             ["Status", settings.suspended ? "Suspended" : settings.resources?.current_state || "Unknown"],
-            ["Address", settings.allocations?.[0] ? `${settings.allocations[0].ip}:${settings.allocations[0].port}` : "N/A"],
+            ["Address", displayAddress],
             ["Memory Limit", `${limits.memory || 0} MB`],
             ["CPU Limit", `${(limits.cpu || 0) * 100}%`],
             ["Disk Limit", `${limits.disk || 0} MB`],
@@ -109,6 +120,44 @@ export default function SettingsTab({ serverId }) {
           ))}
         </div>
       </div>
+
+      {/* ── Port Allocations ────────────────────────────────────────────── */}
+      {settings.allocations?.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-slate-200 mb-3">Port Allocations</h3>
+          <div className="rounded-lg border border-slate-800/40 divide-y divide-slate-800/40">
+            {settings.allocations.map((alloc, i) => {
+              const allocIp = resolveDisplayIp(alloc)
+              const addr = `${allocIp}:${alloc.port}`
+              return (
+                <div key={alloc.id || i} className="flex items-center justify-between px-3 py-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <Network className="h-3.5 w-3.5 text-slate-500" />
+                    <span
+                      className="font-mono text-slate-300 cursor-pointer hover:text-neon-300 transition"
+                      title="Click to copy"
+                      onClick={() => navigator.clipboard.writeText(addr)}
+                    >
+                      {addr}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {alloc.is_default && (
+                      <span className="rounded-full bg-neon-500/20 text-neon-300 px-2 py-0.5 text-[10px] font-semibold">
+                        Primary
+                      </span>
+                    )}
+                    <span className="text-slate-600 font-mono">:{alloc.port}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <p className="mt-1.5 text-[10px] text-slate-600">
+            Your plan includes {settings.feature_limits?.allocations || 0} extra port(s). Primary port is always included.
+          </p>
+        </div>
+      )}
 
       {/* ── Startup Variables ───────────────────────────────────────────── */}
       {settings.startup_variables?.length > 0 && (

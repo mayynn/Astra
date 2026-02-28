@@ -100,14 +100,19 @@ app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"))
 app.use(rateLimiter)
 
 // Session configuration for OAuth
+// In dev (Codespaces), frontend and backend are on different origins so we need
+// SameSite=None + Secure for the session cookie to be sent on cross-origin fetch.
+// In production, both are behind the same Nginx domain, so Lax is fine.
+const isCrossOrigin = !isProd && env.FRONTEND_URL && !env.FRONTEND_URL.includes("localhost")
 app.use(session({
   secret: env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: env.NODE_ENV === "production",
+    secure: isProd || isCrossOrigin,
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    sameSite: isCrossOrigin ? "none" : "lax",
+    maxAge: 10 * 60 * 1000 // 10 minutes — sessions are only used for OAuth flow
   }
 }))
 

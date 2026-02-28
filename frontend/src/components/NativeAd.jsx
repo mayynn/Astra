@@ -27,6 +27,7 @@ export default function NativeAd() {
     <div className="w-full">
       <iframe
         srcDoc={adHtml}
+        sandbox="allow-scripts allow-popups"
         // allow-scripts  — lets the ad JS execute inside the iframe
         // allow-popups   — lets Adsterra open advertiser tabs (required for revenue)
         // NO allow-top-navigation — prevents the ad from redirecting the parent page

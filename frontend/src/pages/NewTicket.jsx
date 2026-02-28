@@ -59,13 +59,13 @@ export default function NewTicket() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-slate-100">Create support ticket</h1>
+        <h1 className="text-3xl font-bold text-white">Create support ticket</h1>
         <p className="text-sm text-slate-400">Describe your issue and our team will assist you</p>
       </div>
 
-      <div className="rounded-xl border border-dark-700 bg-dark-900 p-6">
+      <div className="rounded-xl border border-white/10 bg-dark-800/60 backdrop-blur-sm p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="rounded-lg bg-red-900/20 border border-red-700/30 p-3 text-sm text-red-300">
@@ -202,14 +202,14 @@ export default function NewTicket() {
             <button
               type="button"
               onClick={() => navigate("/support")}
-              className="flex-1 rounded-lg border border-dark-700 px-4 py-3 text-sm font-semibold text-slate-300 hover:bg-dark-800 transition-all"
+              className="button-3d flex-1 rounded-lg border border-white/10 px-4 py-3 text-sm font-semibold text-slate-300 hover:bg-white/[0.04] transition-all"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 rounded-lg bg-primary-500 px-4 py-3 text-sm font-semibold text-white hover:bg-primary-600 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+              className="button-3d flex-1 rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-400 hover:to-primary-500 px-4 py-3 text-sm font-semibold text-white shadow-glow-primary disabled:opacity-60 disabled:cursor-not-allowed transition-all"
             >
               {submitting ? "Creating..." : "Submit ticket"}
             </button>

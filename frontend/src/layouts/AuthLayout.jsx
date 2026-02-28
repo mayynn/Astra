@@ -4,7 +4,7 @@ import { ShieldCheck, Activity, Globe, Zap, Database, Lock, ChevronRight, ArrowU
 
 export default function AuthLayout() {
   return (
-    <div className="min-h-screen bg-ink-950 text-slate-100 selection:bg-accent-500 selection:text-ink-950 font-sans tracking-tight overflow-hidden relative">
+    <div className="min-h-screen bg-dark-950 text-slate-100 selection:bg-accent-500 selection:text-dark-950 font-sans tracking-tight overflow-hidden relative">
       {/* Cinematic Background Engine */}
       <div className="fixed inset-0 pointer-events-none z-0">
          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(6,182,212,0.08),transparent_50%)] animate-pulse" />
@@ -61,7 +61,7 @@ export default function AuthLayout() {
                 { label: "DDoS_EXCLUSION", icon: Globe, desc: "L7 Mitigation active" },
                 { label: "PTERODACTYL_V2", icon: Activity, desc: "Logic automation" }
               ].map((item, i) => (
-                <div key={i} className="group flex items-start gap-4 p-5 rounded-[2rem] border border-white/5 bg-ink-900/40 backdrop-blur-3xl transition-all hover:bg-white/5 hover:border-white/10 hover:translate-y-[-2px]">
+                <div key={i} className="group flex items-start gap-4 p-5 rounded-[2rem] border border-white/[0.06] bg-dark-900/50 backdrop-blur-3xl transition-all hover:bg-white/5 hover:border-white/10 hover:translate-y-[-2px]">
                   <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-accent-500 group-hover:scale-110 transition-transform">
                      <item.icon size={18} />
                   </div>
@@ -83,7 +83,7 @@ export default function AuthLayout() {
           {/* Form Container */}
           <div className="relative group/container perspective-1000">
             <div className="absolute -inset-1 bg-gradient-to-r from-accent-500/20 via-purple-500/20 to-accent-500/20 rounded-[3.5rem] blur-xl opacity-20 group-hover/container:opacity-40 transition-opacity" />
-            <div className="relative bg-ink-900/40 border border-white/10 rounded-[3.5rem] p-10 lg:p-14 backdrop-blur-3xl shadow-2xl transition-all duration-700 group-hover/container:rotate-y-2 group-hover/container:border-white/20">
+            <div className="relative bg-dark-900/50 border border-white/10 rounded-[3.5rem] p-10 lg:p-14 backdrop-blur-3xl shadow-2xl transition-all duration-700 group-hover/container:rotate-y-2 group-hover/container:border-white/20">
                <div className="absolute top-0 right-0 p-8 opacity-5">
                   <Database size={100} className="text-accent-500 rotate-12" />
                </div>

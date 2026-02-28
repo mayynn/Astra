@@ -28,7 +28,14 @@ export function setupConsoleProxy(io) {
           [serverId, socket.data.user.sub]
         )
         if (!server) {
+          console.log(`[ConsoleProxy] Server not found for serverId=${serverId} userId=${socket.data.user.sub}`)
           socket.emit("console:error", { message: "Server not found or access denied" })
+          return
+        }
+
+        if (!server.pterodactyl_server_id) {
+          console.log(`[ConsoleProxy] Server ${serverId} has no pterodactyl_server_id (provisioning pending?)`)
+          socket.emit("console:error", { message: "Server is still being provisioned. Please wait and try again." })
           return
         }
 
@@ -36,8 +43,10 @@ export function setupConsoleProxy(io) {
         cleanupSession(socket.id)
 
         // Resolve uuid + node from the Application API
+        console.log(`[ConsoleProxy] Resolving server details for pteroId=${server.pterodactyl_server_id}`)
         const details = await pteroManage.getServerDetails(server.pterodactyl_server_id)
         const { uuid, node: nodeId } = details
+        console.log(`[ConsoleProxy] Got uuid=${uuid} nodeId=${nodeId}`)
 
         // Generate a Wings JWT and get the WebSocket URL
         const creds = await createWingsToken(nodeId, uuid)
@@ -55,11 +64,24 @@ export function setupConsoleProxy(io) {
           handshakeTimeout: 10000
         })
 
+        // Timeout: if Wings doesn't send "auth success" within 15s, abort
+        let authReceived = false
+        const wingsAuthTimeout = setTimeout(() => {
+          if (!authReceived) {
+            console.error("[ConsoleProxy] Wings auth timeout for", uuid)
+            socket.emit("console:error", {
+              message: "Server daemon did not respond in time. It may be offline or unreachable."
+            })
+            cleanupSession(socket.id)
+          }
+        }, 15000)
+
         activeSessions.set(socket.id, {
           ws: pteroWs,
           uuid,
           nodeId,
-          pteroServerId: server.pterodactyl_server_id
+          pteroServerId: server.pterodactyl_server_id,
+          authTimeout: wingsAuthTimeout
         })
 
         pteroWs.on("open", () => {
@@ -73,6 +95,8 @@ export function setupConsoleProxy(io) {
             switch (msg.event) {
               case "auth success":
                 console.log("[ConsoleProxy] Wings auth success for", uuid)
+                authReceived = true
+                clearTimeout(wingsAuthTimeout)
                 socket.emit("console:connected")
                 break
               case "console output":
@@ -108,13 +132,20 @@ export function setupConsoleProxy(io) {
 
         pteroWs.on("close", (code, reason) => {
           console.log("[ConsoleProxy] WS closed:", code, reason?.toString())
+          clearTimeout(wingsAuthTimeout)
           socket.emit("console:disconnected")
           activeSessions.delete(socket.id)
         })
 
         pteroWs.on("error", (err) => {
           console.error("[ConsoleProxy] WS error:", err.message)
-          socket.emit("console:error", { message: "Console connection lost" })
+          if (!authReceived) {
+            socket.emit("console:error", {
+              message: `Cannot reach server daemon: ${err.message}`
+            })
+          } else {
+            socket.emit("console:error", { message: "Console connection lost" })
+          }
           cleanupSession(socket.id)
         })
 
@@ -130,8 +161,8 @@ export function setupConsoleProxy(io) {
           })
         })
       } catch (err) {
-        console.error("[ConsoleProxy] join error:", err.message)
-        socket.emit("console:error", { message: err.message || "Failed to connect" })
+        console.error("[ConsoleProxy] join error:", err.message, err.stack)
+        socket.emit("console:error", { message: err.message || "Failed to connect to console" })
       }
     })
 
@@ -179,11 +210,14 @@ async function refreshToken(socket, uuid, nodeId) {
 
 function cleanupSession(socketId) {
   const s = activeSessions.get(socketId)
-  if (s?.ws) {
-    try {
-      s.ws.close()
-    } catch {
-      /* already closed */
+  if (s) {
+    if (s.authTimeout) clearTimeout(s.authTimeout)
+    if (s.ws) {
+      try {
+        s.ws.close()
+      } catch {
+        /* already closed */
+      }
     }
   }
   activeSessions.delete(socketId)

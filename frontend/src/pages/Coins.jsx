@@ -127,8 +127,9 @@ export default function Coins() {
       const result = await api.claimCoins(jwt, earnToken)
       setBalance((prev) => prev + result.earned)
       setJustEarned(result.earned)
-      // Reload the page so fresh ads are served
-      setTimeout(() => window.location.reload(), 800)
+      // Reset the earn cycle: cooldown + fresh token for next claim
+      setCooldown(60)
+      setEarnToken(null)
       return
     } catch (err) {
       const wait = err.waitSeconds ?? (err.message?.includes("Too many") ? 70 : 0)
@@ -165,68 +166,71 @@ export default function Coins() {
   if (balanceLoading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <p className="text-gray-400">Loading...</p>
+        <div className="w-8 h-8 border-2 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="space-y-8 pb-16 animate-fade-in">
       <Topbar />
 
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-semibold text-gray-100 mb-2">Earn coins</h1>
-        <p className="text-gray-400">
+        <h1 className="text-3xl font-bold text-white mb-2">Earn coins</h1>
+        <p className="text-slate-400">
           View ads to earn coins every 60 seconds. AdBlock must be disabled.
         </p>
       </div>
 
       {/* Main claim section */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="bg-dark-800 rounded-xl border border-gray-800 p-6 space-y-6">
+        <div className="card-3d bg-dark-800/60 backdrop-blur-sm rounded-xl border border-white/10 p-6 space-y-6">
           <div>
-            <p className="text-sm text-gray-400 mb-2">Earn rate</p>
+            <p className="text-sm text-slate-400 mb-2">Earn rate</p>
             <div className="flex items-baseline gap-2">
-              <p className="text-3xl font-bold text-primary-500">{coinsPerMinute}</p>
-              <p className="text-gray-400">coin / min</p>
+              <p className="text-3xl font-bold text-primary-400">{coinsPerMinute}</p>
+              <p className="text-slate-400">coin / min</p>
             </div>
           </div>
 
           {/* Status message */}
-          <div className="rounded-xl bg-dark-900 border border-gray-800 px-4 py-3 text-sm min-h-[52px] flex items-center">
+          <div className="rounded-xl bg-dark-900/80 border border-white/[0.06] px-4 py-3 text-sm min-h-[52px] flex items-center">
             {adblockStatus === "checking" && (
-              <p className="text-gray-400">Checking for AdBlock…</p>
+              <p className="text-slate-400 flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-slate-500/30 border-t-slate-400 rounded-full animate-spin" />
+                Checking for AdBlock…
+              </p>
             )}
             {adblockStatus === "blocked" && (
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                <p className="text-yellow-500 font-medium">
+                <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                <p className="text-yellow-400 font-medium">
                   AdBlock detected — disable it to earn coins
                 </p>
               </div>
             )}
             {adblockStatus === "clear" && cooldown > 0 && (
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-gray-400" />
-                <p className="text-gray-300">
-                  Next claim in <span className="font-semibold text-primary-500">{cooldown}s</span>
+                <Clock className="w-4 h-4 text-slate-400" />
+                <p className="text-slate-300">
+                  Next claim in <span className="font-semibold text-primary-400">{cooldown}s</span>
                 </p>
               </div>
             )}
             {adblockStatus === "clear" && cooldown === 0 && adViewCountdown > 0 && (
               <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-primary-500" />
-                <p className="text-gray-300">
-                  Viewing ads… <span className="font-semibold text-primary-500">{adViewCountdown}s</span>
+                <Zap className="w-4 h-4 text-primary-400" />
+                <p className="text-slate-300">
+                  Viewing ads… <span className="font-semibold text-primary-400">{adViewCountdown}s</span>
                 </p>
               </div>
             )}
             {adblockStatus === "clear" && cooldown === 0 && adViewCountdown === 0 && fetchingToken && (
-              <p className="text-gray-400">Preparing session…</p>
+              <p className="text-slate-400">Preparing session…</p>
             )}
             {adblockStatus === "clear" && cooldown === 0 && adViewCountdown === 0 && !fetchingToken && earnToken && (
-              <p className="text-green-500 font-medium">✓ Ready to claim!</p>
+              <p className="text-emerald-400 font-medium">✓ Ready to claim!</p>
             )}
           </div>
 
@@ -240,13 +244,17 @@ export default function Coins() {
             <button
               onClick={handleClaim}
               disabled={!canClaim}
-              className="px-6 py-3 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-700 disabled:text-gray-400 text-white rounded-xl font-medium transition-colors disabled:cursor-not-allowed"
+              className={`glow-ring button-3d px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed ${
+                canClaim
+                  ? "bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-400 hover:to-primary-500 text-white shadow-glow-primary"
+                  : "bg-dark-700 text-slate-500 disabled:shadow-none"
+              }`}
             >
               {buttonLabel()}
             </button>
 
             {justEarned > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-500/10 px-3 py-2 text-sm font-semibold text-green-500">
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-sm font-semibold text-emerald-400 animate-slide-up">
                 <CoinsIcon className="w-4 h-4" />
                 +{justEarned}
               </span>
@@ -256,20 +264,20 @@ export default function Coins() {
 
         {/* Adblock warning */}
         {adblockStatus === "blocked" && (
-          <div className="bg-dark-800 rounded-xl border border-yellow-500/20 p-6 space-y-4">
+          <div className="bg-dark-800/60 backdrop-blur-sm rounded-xl border border-yellow-500/20 p-6 space-y-4">
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-yellow-500/10 rounded-lg">
-                <AlertTriangle className="w-5 h-5 text-yellow-500" />
+              <div className="p-2.5 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                <AlertTriangle className="w-5 h-5 text-yellow-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-yellow-500 mb-1">Please disable AdBlock</h3>
-                <p className="text-sm text-gray-300 leading-relaxed">
+                <h3 className="font-semibold text-yellow-400 mb-1">Please disable AdBlock</h3>
+                <p className="text-sm text-slate-300 leading-relaxed">
                   Ads fund this platform. Disable your blocker on this page and refresh to start earning
                   coins.
                 </p>
               </div>
             </div>
-            <p className="text-xs text-gray-400 leading-relaxed">
+            <p className="text-xs text-slate-500 leading-relaxed">
               Detection uses three independent methods. Use the button below after disabling your blocker — no
               page refresh needed.
             </p>
@@ -287,7 +295,7 @@ export default function Coins() {
                   .finally(() => setRechecking(false))
               }}
               disabled={rechecking}
-              className="px-4 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 text-yellow-500 rounded-lg font-medium transition-colors disabled:opacity-50"
+              className="button-3d px-4 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 text-yellow-400 rounded-lg font-medium transition-all disabled:opacity-50"
             >
               {rechecking ? "Checking…" : "I've disabled AdBlock — re-check"}
             </button>
@@ -297,34 +305,34 @@ export default function Coins() {
 
       {/* Stats row */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="bg-dark-800 rounded-xl border border-gray-800 p-6">
+        <div className="card-3d bg-dark-800/60 backdrop-blur-sm rounded-xl border border-white/10 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-primary-500/10 rounded-lg">
-              <CoinsIcon className="w-5 h-5 text-primary-500" />
+            <div className="p-2.5 bg-primary-500/10 rounded-lg border border-primary-500/20">
+              <CoinsIcon className="w-5 h-5 text-primary-400" />
             </div>
-            <p className="text-sm text-gray-400">Balance</p>
+            <p className="text-sm text-slate-400">Balance</p>
           </div>
-          <p className="text-2xl font-bold text-gray-100">{balance.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-white">{balance.toLocaleString()}</p>
         </div>
         
-        <div className="bg-dark-800 rounded-xl border border-gray-800 p-6">
+        <div className="card-3d bg-dark-800/60 backdrop-blur-sm rounded-xl border border-white/10 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-accent-500/10 rounded-lg">
-              <Zap className="w-5 h-5 text-accent-500" />
+            <div className="p-2.5 bg-accent-500/10 rounded-lg border border-accent-500/20">
+              <Zap className="w-5 h-5 text-accent-400" />
             </div>
-            <p className="text-sm text-gray-400">Earn rate</p>
+            <p className="text-sm text-slate-400">Earn rate</p>
           </div>
-          <p className="text-2xl font-bold text-gray-100">{coinsPerMinute} / min</p>
+          <p className="text-2xl font-bold text-white">{coinsPerMinute} / min</p>
         </div>
         
-        <div className="bg-dark-800 rounded-xl border border-gray-800 p-6">
+        <div className="card-3d bg-dark-800/60 backdrop-blur-sm rounded-xl border border-white/10 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-green-500/10 rounded-lg">
-              <Clock className="w-5 h-5 text-green-500" />
+            <div className="p-2.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+              <Clock className="w-5 h-5 text-emerald-400" />
             </div>
-            <p className="text-sm text-gray-400">Next claim</p>
+            <p className="text-sm text-slate-400">Next claim</p>
           </div>
-          <p className="text-2xl font-bold text-gray-100">
+          <p className="text-2xl font-bold text-white">
             {cooldown > 0 ? `${cooldown}s` : adViewCountdown > 0 ? `${adViewCountdown}s` : "Ready"}
           </p>
         </div>
@@ -333,12 +341,12 @@ export default function Coins() {
       {/* Ad slots — only rendered when adblock is not active */}
       {adblockStatus !== "blocked" && (
         <>
-          <div className="bg-dark-800 rounded-xl border border-gray-800 p-6">
-            <p className="text-xs text-gray-400 mb-4">Sponsored</p>
+          <div className="bg-dark-800/60 backdrop-blur-sm rounded-xl border border-white/10 p-6">
+            <p className="text-xs text-slate-500 mb-4">Sponsored</p>
             <NativeAd />
           </div>
-          <div className="bg-dark-800 rounded-xl border border-gray-800 p-6">
-            <p className="text-xs text-gray-400 mb-4">Sponsored</p>
+          <div className="bg-dark-800/60 backdrop-blur-sm rounded-xl border border-white/10 p-6">
+            <p className="text-xs text-slate-500 mb-4">Sponsored</p>
             <BannerAd />
           </div>
         </>

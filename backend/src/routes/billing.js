@@ -85,12 +85,11 @@ router.post(
 
       const user = await getOne("SELECT email FROM users WHERE id = ?", [req.user.id])
 
+      // Discord notification is best-effort — don't roll back the submission if webhook fails
       try {
         await sendUtrToDiscord({ user, submission })
-      } catch (error) {
-        await runSync("DELETE FROM utr_submissions WHERE id = ?", [info.lastID])
-        fs.unlinkSync(req.file.path)
-        throw error
+      } catch (webhookErr) {
+        console.warn("[BILLING] Discord webhook failed (submission kept):", webhookErr.message)
       }
 
       res.status(201).json({ id: info.lastID })

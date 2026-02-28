@@ -15,7 +15,7 @@ export default function ProtectedAdminRoute({ children }) {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem("user") || "{}") } catch { return {} }
   })
-  const [checking, setChecking] = useState(!user.role)
+  const [checking, setChecking] = useState(true)
 
   // Always verify the role from the server — don't trust potentially stale localStorage
   useEffect(() => {
